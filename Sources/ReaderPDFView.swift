@@ -87,13 +87,54 @@ final class TextAnnotation: PDFAnnotation {
 
 /// Calque transparent au-dessus du PDF : poignées de la sélection et aperçu du geste en cours (ne capte aucun clic).
 private final class OverlayView: NSView {
-    var selectionRect: NSRect?
-    var showHandles = true
+    var selectionRect: NSRect? { didSet { window?.invalidateCursorRects(for: self) } }
+    var showHandles = true { didSet { window?.invalidateCursorRects(for: self) } }
     var previewPath: NSBezierPath?
     var previewKind: Tool?
     var flippedState = true
     override var isFlipped: Bool { flippedState }
-    override func hitTest(_ p: NSPoint) -> NSView? { nil }
+    /// Le calque ne capte rien, sauf au-dessus d'une poignée : il y porte le curseur de redimensionnement (les clics sont transmis à la vue PDF).
+    override func hitTest(_ p: NSPoint) -> NSView? {
+        let local = convert(p, from: superview)
+        return handleCursorRects().contains { $0.0.contains(local) } ? self : nil
+    }
+    override func mouseDown(with e: NSEvent) { superview?.mouseDown(with: e) }
+    override func mouseDragged(with e: NSEvent) { superview?.mouseDragged(with: e) }
+    override func mouseUp(with e: NSEvent) { superview?.mouseUp(with: e) }
+    private func handleCursorRects() -> [(NSRect, NSCursor)] {
+        guard let r = selectionRect, showHandles else { return [] }
+        return ReaderPDFView.Handle.allCases.map { h in (ReaderPDFView.handleRect(h, in: r).insetBy(dx: -4, dy: -4), Self.cursor(for: h)) }
+    }
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        for (rect, cursor) in handleCursorRects() { addCursorRect(rect, cursor: cursor) }
+    }
+    /// Curseurs de redimensionnement précis : flèche horizontale ou verticale sur les côtés, diagonale sur les coins.
+    private static func cursor(for h: ReaderPDFView.Handle) -> NSCursor {
+        if #available(macOS 15.0, *) {
+            switch h {
+            case .t: return .frameResize(position: .top, directions: .all)
+            case .b: return .frameResize(position: .bottom, directions: .all)
+            case .l: return .frameResize(position: .left, directions: .all)
+            case .r: return .frameResize(position: .right, directions: .all)
+            case .tl: return .frameResize(position: .topLeft, directions: .all)
+            case .tr: return .frameResize(position: .topRight, directions: .all)
+            case .bl: return .frameResize(position: .bottomLeft, directions: .all)
+            case .br: return .frameResize(position: .bottomRight, directions: .all)
+            }
+        }
+        switch h {
+        case .t, .b: return .resizeUpDown
+        case .l, .r: return .resizeLeftRight
+        case .tl, .br: return diagonal("_windowResizeNorthWestSouthEastCursor") ?? .crosshair
+        case .tr, .bl: return diagonal("_windowResizeNorthEastSouthWestCursor") ?? .crosshair
+        }
+    }
+    private static func diagonal(_ name: String) -> NSCursor? {
+        let sel = NSSelectorFromString(name)
+        guard NSCursor.responds(to: sel) else { return nil }
+        return NSCursor.perform(sel)?.takeUnretainedValue() as? NSCursor
+    }
     override func draw(_ r: NSRect) {
         if let path = previewPath, let kind = previewKind {
             let color: NSColor = kind == .whiteout ? .white : (kind == .pen ? .systemBlue : .systemRed)

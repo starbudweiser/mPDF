@@ -25,20 +25,20 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Nouveau : une image sélectionnée propose « Détourer » (et « Image d'origine »), calcul en arrière-plan.
-- Barre d'outils : icônes et boutons de fenêtre bien centrés.
+- Correction : le détourage fonctionne aussi sur les photos avec un canal de transparence opaque.
+- La carte « Détourer » reste centrée sous l'image (au-dessus si elle est trop basse), avec barre de progression et pourcentage.
 <!-- notes:en -->
 ## $VERSION
-- New: a selected image offers "Cut out" (and "Original"), computed in the background.
-- Toolbar: icons and window buttons properly centered.
+- Fix: background removal now also works on photos with an opaque alpha channel.
+- The "Cut out" card stays centered under the image (above it if too low), with a progress bar and percentage.
 <!-- notes:es -->
 ## $VERSION
-- Novedad: una imagen seleccionada ofrece «Recortar» (y «Original»), calculado en segundo plano.
-- Barra de herramientas: iconos y botones de ventana bien centrados.
+- Corrección: el recorte también funciona con fotos que tienen un canal alfa opaco.
+- La tarjeta «Recortar» queda centrada bajo la imagen (encima si está muy abajo), con barra de progreso y porcentaje.
 <!-- notes:it -->
 ## $VERSION
-- Novità: un'immagine selezionata offre «Ritaglia» (e «Originale»), calcolato in background.
-- Barra degli strumenti: icone e pulsanti della finestra ben centrati.
+- Correzione: il ritaglio funziona anche sulle foto con canale alfa opaco.
+- La scheda «Ritaglia» resta centrata sotto l'immagine (sopra se troppo in basso), con barra di avanzamento e percentuale.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

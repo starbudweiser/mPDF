@@ -25,20 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Correction : le détourage fonctionne aussi sur les photos avec un canal de transparence opaque.
-- La carte « Détourer » reste centrée sous l'image (au-dessus si elle est trop basse), avec barre de progression et pourcentage.
+- Poignées de redimensionnement : curseurs précis (flèches horizontales, verticales et diagonales).
 <!-- notes:en -->
 ## $VERSION
-- Fix: background removal now also works on photos with an opaque alpha channel.
-- The "Cut out" card stays centered under the image (above it if too low), with a progress bar and percentage.
+- Resize handles: precise cursors (horizontal, vertical and diagonal arrows).
 <!-- notes:es -->
 ## $VERSION
-- Corrección: el recorte también funciona con fotos que tienen un canal alfa opaco.
-- La tarjeta «Recortar» queda centrada bajo la imagen (encima si está muy abajo), con barra de progreso y porcentaje.
+- Tiradores de redimensionado: cursores precisos (flechas horizontales, verticales y diagonales).
 <!-- notes:it -->
 ## $VERSION
-- Correzione: il ritaglio funziona anche sulle foto con canale alfa opaco.
-- La scheda «Ritaglia» resta centrata sotto l'immagine (sopra se troppo in basso), con barra di avanzamento e percentuale.
+- Maniglie di ridimensionamento: cursori precisi (frecce orizzontali, verticali e diagonali).
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

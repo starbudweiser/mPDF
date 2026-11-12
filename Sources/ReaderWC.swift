@@ -588,7 +588,10 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
             for a in page.annotations where a.type == "FreeText" && !(a is TextAnnotation) {
                 let n = TextAnnotation(bounds: a.bounds, forType: .freeText, withProperties: nil)
                 n.contents = a.contents; n.font = a.font; n.fontColor = a.fontColor
-                n.color = a.color; n.alignment = a.alignment; n.border = a.border
+                // PDFKit relit un FreeText sans couleur de fond (notre « transparent ») comme jaune par défaut.
+                var bg = a.color.usingColorSpace(.sRGB) ?? a.color
+                if bg.redComponent > 0.95, bg.greenComponent > 0.95, bg.blueComponent < 0.1 { bg = .clear }
+                n.color = bg; n.alignment = a.alignment; n.border = a.border
                 n.userName = a.userName; n.shouldPrint = a.shouldPrint
                 page.removeAnnotation(a); page.addAnnotation(n)
             }

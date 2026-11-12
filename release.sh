@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Poignées de redimensionnement : curseurs précis (flèches horizontales, verticales et diagonales).
+- Poignées de redimensionnement : le curseur reste affiché et les coins sont bien orientés.
 <!-- notes:en -->
 ## $VERSION
-- Resize handles: precise cursors (horizontal, vertical and diagonal arrows).
+- Resize handles: the cursor now stays visible and corners are correctly oriented.
 <!-- notes:es -->
 ## $VERSION
-- Tiradores de redimensionado: cursores precisos (flechas horizontales, verticales y diagonales).
+- Tiradores de redimensionado: el cursor permanece visible y las esquinas están bien orientadas.
 <!-- notes:it -->
 ## $VERSION
-- Maniglie di ridimensionamento: cursori precisi (frecce orizzontali, verticali e diagonali).
+- Maniglie di ridimensionamento: il cursore resta visibile e gli angoli sono orientati correttamente.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

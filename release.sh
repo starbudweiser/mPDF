@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Correction : un texte ajouté ne reprend plus un fond jaune après enregistrement et réouverture.
+- Nouveau : détourage automatique des images importées (Réglages), sujet isolé sur fond transparent.
 <!-- notes:en -->
 ## $VERSION
-- Fix: added text no longer gets a yellow background after saving and reopening.
+- New: automatic background removal for imported images (Settings), subject isolated on a transparent background.
 <!-- notes:es -->
 ## $VERSION
-- Corrección: el texto añadido ya no recupera un fondo amarillo tras guardar y reabrir.
+- Novedad: recorte automático del fondo de las imágenes importadas (Ajustes), sujeto aislado sobre fondo transparente.
 <!-- notes:it -->
 ## $VERSION
-- Correzione: il testo aggiunto non riprende più uno sfondo giallo dopo il salvataggio e la riapertura.
+- Novità: rimozione automatica dello sfondo delle immagini importate (Impostazioni), soggetto isolato su sfondo trasparente.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

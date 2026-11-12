@@ -1,0 +1,184 @@
+// mPDF — composants AppKit au design Socle (plat, sans ombre ni dégradé ; tokens de Socle.swift).
+import AppKit
+import SwiftUI
+
+/// Couleurs Socle en NSColor (dynamiques : suivent le thème de la fenêtre).
+enum S {
+    static let bg = NSColor(Socle.C.bg)
+    static let bgSunken = NSColor(Socle.C.bgSunken)
+    static let surface = NSColor(Socle.C.surface)
+    static let surfaceRaised = NSColor(Socle.C.surfaceRaised)
+    static let surfaceHover = NSColor(Socle.C.surfaceHover)
+    static let surfaceSelected = NSColor(Socle.C.surfaceSelected)
+    static let control = NSColor(Socle.C.control)
+    static let controlHover = NSColor(Socle.C.controlHover)
+    static let controlPressed = NSColor(Socle.C.controlPressed)
+    static let border = NSColor(Socle.C.border)
+    static let text = NSColor(Socle.C.text)
+    static let textStrong = NSColor(Socle.C.textStrong)
+    static let textMuted = NSColor(Socle.C.textMuted)
+    static let textSubtle = NSColor(Socle.C.textSubtle)
+    static let accentFill = NSColor(Socle.C.accentFill)
+    static let accentFillHover = NSColor(Socle.C.accentFillHover)
+    static let onAccentFill = NSColor(Socle.C.onAccentFill)
+    static let accentText = NSColor(Socle.C.accentText)
+    /// Tailles de texte Socle × 1,1 (échelle fixe des applis desktop).
+    static func font(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont { .systemFont(ofSize: (size * 1.1).rounded(), weight: weight) }
+}
+
+/// Aplat de couleur (fond de barre, de colonne, filet de 1 px) qui suit le thème.
+final class FlatView: NSView {
+    var fill: NSColor { didSet { needsDisplay = true } }
+    init(_ fill: NSColor) { self.fill = fill; super.init(frame: .zero); wantsLayer = true; translatesAutoresizingMaskIntoConstraints = false }
+    required init?(coder: NSCoder) { fatalError() }
+    override var wantsUpdateLayer: Bool { true }
+    override func updateLayer() { effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = fill.cgColor } }
+    override func viewDidChangeEffectiveAppearance() { needsDisplay = true }
+    override func hitTest(_ p: NSPoint) -> NSView? { subviews.isEmpty ? nil : super.hitTest(p) }
+
+    static func hairline(vertical: Bool) -> FlatView {
+        let v = FlatView(S.border)
+        if vertical { v.widthAnchor.constraint(equalToConstant: 1).isActive = true } else { v.heightAnchor.constraint(equalToConstant: 1).isActive = true }
+        return v
+    }
+}
+
+/// Bouton plat Socle : aplat `control`, sans contour ; sélectionné = aplat `accent-fill`. Icône SF Symbol ou libellé.
+final class BarButton: NSButton {
+    var selectedState = false { didSet { refresh() } }
+    private var hover = false { didSet { refresh() } }
+    private let label: String?
+
+    init(symbol: String, tip: String, target: AnyObject?, action: Selector) {
+        label = nil
+        super.init(frame: .zero)
+        image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular))
+        toolTip = tip
+        common(tip, target, action)
+        widthAnchor.constraint(equalToConstant: Socle.M.sizeControl).isActive = true
+    }
+    init(title: String, target: AnyObject?, action: Selector) {
+        label = title
+        super.init(frame: .zero)
+        common(title, target, action)
+        widthAnchor.constraint(greaterThanOrEqualToConstant: 72).isActive = true
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func common(_ name: String, _ target: AnyObject?, _ action: Selector) {
+        self.target = target; self.action = action
+        imagePosition = label == nil ? .imageOnly : .noImage
+        isBordered = false; bezelStyle = .regularSquare; imageScaling = .scaleNone; focusRingType = .exterior
+        setButtonType(.momentaryChange)
+        wantsLayer = true; layer?.cornerRadius = Socle.M.radius
+        translatesAutoresizingMaskIntoConstraints = false
+        heightAnchor.constraint(equalToConstant: label == nil ? Socle.M.sizeControl : 28).isActive = true
+        setAccessibilityLabel(name)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+        refresh()
+    }
+    func setSymbol(_ name: String) { image = NSImage(systemSymbolName: name, accessibilityDescription: toolTip)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular)) }
+    override func mouseEntered(with e: NSEvent) { hover = true }
+    override func mouseExited(with e: NSEvent) { hover = false }
+    override var isHighlighted: Bool { didSet { refresh() } }
+    override var isEnabled: Bool { didSet { refresh() } }
+    override func viewDidChangeEffectiveAppearance() { refresh() }
+
+    func refresh() {
+        let bg: NSColor = selectedState ? (hover ? S.accentFillHover : S.accentFill) : (isHighlighted ? S.controlPressed : (hover ? S.controlHover : S.control))
+        let fg: NSColor = selectedState ? S.onAccentFill : S.text
+        effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = bg.cgColor }
+        contentTintColor = fg
+        if let label {
+            let p = NSMutableParagraphStyle(); p.alignment = .center
+            attributedTitle = NSAttributedString(string: label, attributes: [.font: S.font(12, selectedState ? .semibold : .regular), .foregroundColor: selectedState ? S.textStrong : S.textMuted, .paragraphStyle: p])
+            effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = (selectedState ? S.control : (hover ? S.controlHover.withAlphaComponent(0.5) : S.bgSunken)).cgColor }
+        }
+        alphaValue = isEnabled ? 1 : Socle.M.opacityDisabled
+    }
+}
+
+/// Zone de saisie Socle : angles droits, fond `bg-sunken`, marge intérieure `space-3`, pas de contour (sauf focus).
+final class FieldCell: NSTextFieldCell {
+    private let inset: CGFloat = Socle.M.space3
+    override func drawingRect(forBounds r: NSRect) -> NSRect { centered(super.drawingRect(forBounds: r.insetBy(dx: inset, dy: 0))) }
+    override func titleRect(forBounds r: NSRect) -> NSRect { centered(super.titleRect(forBounds: r.insetBy(dx: inset, dy: 0))) }
+    override func edit(withFrame r: NSRect, in v: NSView, editor: NSText, delegate d: Any?, event e: NSEvent?) { super.edit(withFrame: drawingRect(forBounds: r), in: v, editor: editor, delegate: d, event: e) }
+    override func select(withFrame r: NSRect, in v: NSView, editor: NSText, delegate d: Any?, start: Int, length: Int) { super.select(withFrame: drawingRect(forBounds: r), in: v, editor: editor, delegate: d, start: start, length: length) }
+    private func centered(_ r: NSRect) -> NSRect {
+        let h = cellSize(forBounds: r).height
+        return NSRect(x: r.minX, y: r.minY + (r.height - h) / 2, width: r.width, height: h)
+    }
+}
+
+final class SearchField: NSTextField {
+    override class var cellClass: AnyClass? { get { FieldCell.self } set {} }
+    init(placeholder: String) {
+        super.init(frame: .zero)
+        isBordered = false; isBezeled = false; drawsBackground = false; isEditable = true
+        font = S.font(12)
+        focusRingType = .exterior
+        wantsLayer = true
+        translatesAutoresizingMaskIntoConstraints = false
+        (cell as? NSTextFieldCell)?.isScrollable = true
+        placeholderAttributedString = NSAttributedString(string: placeholder, attributes: [.font: S.font(12), .foregroundColor: S.textSubtle])
+        heightAnchor.constraint(equalToConstant: Socle.M.sizeControl).isActive = true
+        updateColors()
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func viewDidChangeEffectiveAppearance() { updateColors() }
+    private func updateColors() {
+        effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = S.bgSunken.cgColor; textColor = S.textStrong }
+    }
+}
+
+/// Séparateur de colonnes : filet de 1 px aux couleurs Socle.
+final class FlatSplitView: NSSplitView {
+    override var dividerColor: NSColor { S.border }
+    override var dividerThickness: CGFloat { 1 }
+}
+
+/// Ligne sélectionnée : aplat `surface-selected` (le contrôle porte l'accent, pas la ligne).
+final class SelRow: NSTableRowView {
+    override func drawSelection(in dirtyRect: NSRect) { S.surfaceSelected.setFill(); bounds.fill() }
+    override var isEmphasized: Bool { get { false } set {} }
+}
+
+extension Notification.Name { static let mpdfPanelSide = Notification.Name("mpdfPanelSide") }
+
+/// Pastille d'information (nom du fichier, page) : translucide, centrée en bas, s'efface seule ; ne capte aucun clic.
+@MainActor
+final class PageHUD: NSVisualEffectView {
+    private let label = NSTextField(labelWithString: "")
+    private var work: DispatchWorkItem?
+
+    init() {
+        super.init(frame: .zero)
+        material = .hudWindow; blendingMode = .withinWindow; state = .active
+        wantsLayer = true; layer?.cornerRadius = 10; layer?.masksToBounds = true
+        alphaValue = 0
+        translatesAutoresizingMaskIntoConstraints = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.lineBreakMode = .byTruncatingMiddle; label.maximumNumberOfLines = 1
+        label.cell?.usesSingleLineMode = true; label.cell?.wraps = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14), label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 7), label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -7),
+            widthAnchor.constraint(lessThanOrEqualToConstant: 520),
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func hitTest(_ p: NSPoint) -> NSView? { nil }
+
+    func show(name: String, detail: String, hold: TimeInterval = 1.8) {
+        let s = NSMutableAttributedString(string: name, attributes: [.font: S.font(12, .semibold), .foregroundColor: NSColor.labelColor])
+        s.append(NSAttributedString(string: "   " + detail, attributes: [.font: S.font(12), .foregroundColor: NSColor.secondaryLabelColor]))
+        label.attributedStringValue = s
+        work?.cancel()
+        NSAnimationContext.runAnimationGroup { $0.duration = 0.15; animator().alphaValue = 1 }
+        let w = DispatchWorkItem { [weak self] in NSAnimationContext.runAnimationGroup { $0.duration = 0.4; self?.animator().alphaValue = 0 } }
+        work = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + hold, execute: w)
+    }
+}

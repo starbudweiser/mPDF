@@ -151,6 +151,10 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         pdfView.onStyleApplied = { [weak self] a, p, f, c, b in self?.registerStyle(a, p, f, c, b) }
         pdfView.onWhiteoutDoubleClick = { [weak self] a, p, vp in self?.whiteoutMenu(a, p, at: vp) }
         formatBar.onChange = { [weak self] st in self?.pdfView.applyTextStyle(st) }
+        pdfView.onOverlayRefresh = { [weak self] in
+            guard let self, let a = self.imageCardAnnot, let sel = self.pdfView.selected, sel.annot === a, let root = self.pdfView.superview else { return }
+            self.positionImageCard(a, sel.page, root)
+        }
         pdfView.onToolChange = { [weak self] t in self?.updateToolButtons(t) }
         pdfView.onDropFiles = { [weak self] urls, page, pp, vp in self?.handleDrop(urls, page: page, pagePoint: pp, viewPoint: vp) }
         pdfView.onLayout = { [weak self] in self?.applyFit() }
@@ -655,45 +659,84 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         doc.undoManager?.registerUndo(withTarget: self) { $0.restoreStyle(a, page, cf, cc, cb) }
     }
 
-    /// Image sélectionnée : une petite carte propose de la détourer (ou de rétablir l'original).
+    /// Image sélectionnée : une petite carte, toujours centrée sous l'image (au-dessus si elle est trop basse), propose de la détourer
+    /// (ou de rétablir l'original) ; pendant le calcul elle montre une barre de progression et un pourcentage.
     private var imageCard: NSVisualEffectView?
     private weak var imageCardAnnot: ImageAnnotation?
-    private var imageCardCut = false
+    private var imageCardKey = ""
+    private var imageBar: NSProgressIndicator?
+    private var imagePct: NSTextField?
+    private var imageTimer: Timer?
 
     private func updateImageCard() {
         guard let sel = pdfView.selected, let a = sel.annot as? ImageAnnotation, let root = pdfView.superview else {
-            imageCard?.removeFromSuperview(); imageCard = nil; imageCardAnnot = nil; return
+            imageCard?.removeFromSuperview(); imageCard = nil; imageCardAnnot = nil; imageCardKey = ""
+            imageTimer?.invalidate(); imageTimer = nil; return
         }
         let cut = a.original != nil
-        if imageCardAnnot === a, imageCardCut == cut, imageCard != nil { positionImageCard(a, sel.page, root); return }
-        imageCard?.removeFromSuperview()
+        let key = "\(ObjectIdentifier(a).hashValue)|\(cut)|\(a.cutoutBusy)|\(a.cutoutMessage ?? "")"
+        if key == imageCardKey, imageCard != nil { positionImageCard(a, sel.page, root); return }
+        imageCard?.removeFromSuperview(); imageTimer?.invalidate(); imageTimer = nil; imageBar = nil; imagePct = nil
         let card = NSVisualEffectView(); card.material = .hudWindow; card.blendingMode = .withinWindow; card.state = .active
         card.wantsLayer = true; card.layer?.cornerRadius = 10; card.layer?.masksToBounds = true
-        let b = BarButton(symbol: cut ? "arrow.uturn.backward" : "wand.and.stars", label: L.t(cut ? "img.uncut" : "img.cut"), tip: L.t(cut ? "img.uncutTip" : "img.cutTip"), target: nil, action: #selector(NSObject.description))
         let page = sel.page
-        let act = MenuAction { [weak self, weak a] in if let a { self?.pdfView.setCutout(a, on: page, enabled: !cut) } }
-        b.target = act; b.action = #selector(MenuAction.run)
-        let row = NSStackView(views: [b]); row.edgeInsets = NSEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
-        row.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(row)
-        NSLayoutConstraint.activate([row.leadingAnchor.constraint(equalTo: card.leadingAnchor), row.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-                                     row.topAnchor.constraint(equalTo: card.topAnchor), row.bottomAnchor.constraint(equalTo: card.bottomAnchor)])
+        let content: NSView
+        var keep: Any = 0
+        if a.cutoutBusy {
+            let bar = NSProgressIndicator(); bar.style = .bar; bar.isIndeterminate = false; bar.minValue = 0; bar.maxValue = 1; bar.doubleValue = a.cutoutFraction
+            bar.controlSize = .small; bar.translatesAutoresizingMaskIntoConstraints = false; bar.widthAnchor.constraint(equalToConstant: 120).isActive = true
+            let pct = NSTextField(labelWithString: "\(Int(a.cutoutFraction * 100)) %"); pct.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+            pct.textColor = .secondaryLabelColor; pct.alignment = .right; pct.translatesAutoresizingMaskIntoConstraints = false; pct.widthAnchor.constraint(equalToConstant: 38).isActive = true
+            let title = NSTextField(labelWithString: L.t("img.busy")); title.font = .systemFont(ofSize: 11, weight: .medium); title.textColor = .labelColor
+            let line = NSStackView(views: [bar, pct]); line.spacing = 8
+            let col = NSStackView(views: [title, line]); col.orientation = .vertical; col.alignment = .leading; col.spacing = 4
+            col.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+            content = col; imageBar = bar; imagePct = pct
+            imageTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self, weak a] _ in
+                MainActor.assumeIsolated {
+                    guard let self, let a else { return }
+                    self.imageBar?.doubleValue = a.cutoutFraction
+                    self.imagePct?.stringValue = "\(Int(a.cutoutFraction * 100)) %"
+                }
+            }
+        } else if let msg = a.cutoutMessage {
+            let l = NSTextField(labelWithString: msg); l.font = .systemFont(ofSize: 12, weight: .medium); l.textColor = .labelColor
+            let icon = NSImageView(image: NSImage(systemSymbolName: "exclamationmark.circle", accessibilityDescription: nil) ?? NSImage())
+            icon.contentTintColor = .systemOrange
+            let row = NSStackView(views: [icon, l]); row.spacing = 6; row.edgeInsets = NSEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+            content = row
+        } else {
+            let b = BarButton(symbol: cut ? "arrow.uturn.backward" : "wand.and.stars", label: L.t(cut ? "img.uncut" : "img.cut"), tip: L.t(cut ? "img.uncutTip" : "img.cutTip"), target: nil, action: #selector(NSObject.description))
+            let act = MenuAction { [weak self, weak a] in if let a { self?.pdfView.setCutout(a, on: page, enabled: !cut) } }
+            b.target = act; b.action = #selector(MenuAction.run); keep = act
+            let row = NSStackView(views: [b]); row.edgeInsets = NSEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
+            content = row
+        }
+        content.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(content)
+        NSLayoutConstraint.activate([content.leadingAnchor.constraint(equalTo: card.leadingAnchor), content.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+                                     content.topAnchor.constraint(equalTo: card.topAnchor), content.bottomAnchor.constraint(equalTo: card.bottomAnchor)])
         card.layoutSubtreeIfNeeded()
         card.setFrameSize(card.fittingSize)
         card.translatesAutoresizingMaskIntoConstraints = true
         root.addSubview(card)
-        objc_setAssociatedObject(card, Unmanaged.passUnretained(card).toOpaque(), act, .OBJC_ASSOCIATION_RETAIN)
-        imageCard = card; imageCardAnnot = a; imageCardCut = cut
+        objc_setAssociatedObject(card, Unmanaged.passUnretained(card).toOpaque(), keep, .OBJC_ASSOCIATION_RETAIN)
+        imageCard = card; imageCardAnnot = a; imageCardKey = key
         positionImageCard(a, page, root)
     }
+    /// Centrée sous l'image ; au-dessus si elle est trop basse ; à l'intérieur (en bas) si elle occupe toute la hauteur.
     private func positionImageCard(_ a: ImageAnnotation, _ page: PDFPage, _ root: NSView) {
         guard let card = imageCard else { return }
         let size = card.frame.size
-        let r = pdfView.convert(a.bounds, from: page)
-        var y = r.minY - size.height - 8
-        if y < 8 { y = min(r.maxY + 8, root.bounds.height - size.height - 8) }
-        let x = max(8, min(r.midX - size.width / 2, root.bounds.width - size.width - 8))
-        card.setFrameOrigin(NSPoint(x: x, y: y))
+        let r = pdfView.convert(pdfView.convert(a.bounds, from: page), to: root)
+        let gap: CGFloat = 8, edge: CGFloat = 8
+        let below = r.minY - size.height - gap, above = r.maxY + gap
+        let y: CGFloat
+        if below >= edge { y = below }
+        else if above + size.height <= root.bounds.height - edge { y = above }
+        else { y = max(edge, r.minY + gap) }
+        let x = max(edge, min(r.midX - size.width / 2, root.bounds.width - size.width - edge))
+        card.setFrameOrigin(NSPoint(x: x.rounded(), y: y.rounded()))
     }
 
     /// Double-clic sur une zone gommée : une petite carte propose d'y écrire du texte ou d'y placer une image.

@@ -9,17 +9,36 @@ enum Cutout {
     static var enabled: Bool { UserDefaults.standard.bool(forKey: key) }
     private static let context = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
 
-    /// Image détourée et recadrée sur le sujet ; l'image d'origine si elle a déjà de la transparence ou si aucun sujet n'est trouvé.
-    /// Le masque Vision est resserré de quelques pixels puis adouci, et appliqué sur l'image d'origine (couleurs intactes, pas de liseré de fond).
-    static func apply(_ image: NSImage) -> NSImage {
-        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return image }
-        switch cg.alphaInfo { case .none, .noneSkipFirst, .noneSkipLast: break; default: return image }
+    enum Outcome { case cut(NSImage), noSubject, alreadyTransparent }
+
+    /// Vrai si l'image contient de la transparence (échantillon réduit : suffisant pour distinguer un détourage existant d'un simple canal alpha opaque).
+    private static func hasTransparency(_ cg: CGImage) -> Bool {
+        switch cg.alphaInfo { case .none, .noneSkipFirst, .noneSkipLast: return false; default: break }
+        let n = 48
+        var px = [UInt8](repeating: 255, count: n * n * 4)
+        guard let ctx = CGContext(data: &px, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+        ctx.clear(CGRect(x: 0, y: 0, width: n, height: n))
+        ctx.interpolationQuality = .low
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: n, height: n))
+        var transparent = 0
+        for i in stride(from: 3, to: px.count, by: 4) where px[i] < 200 { transparent += 1 }
+        return transparent > n * n / 50
+    }
+
+    /// Image détourée et recadrée sur le sujet. Le masque Vision est resserré de quelques pixels puis adouci, et appliqué sur l'image d'origine
+    /// (couleurs intactes, pas de liseré de fond). `stage` signale les étapes franchies (0 : début, 1 : sujet trouvé, 2 : masque appliqué).
+    static func apply(_ image: NSImage, stage: ((Int) -> Void)? = nil) -> Outcome {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return .noSubject }
+        if hasTransparency(cg) { return .alreadyTransparent }
+        stage?(0)
         let request = VNGenerateForegroundInstanceMaskRequest()
         let handler = VNImageRequestHandler(cgImage: cg, options: [:])
         guard (try? handler.perform([request])) != nil,
               let obs = request.results?.first, !obs.allInstances.isEmpty,
               let maskBuffer = try? obs.generateScaledMaskForImage(forInstances: obs.allInstances, from: handler)
-        else { return image }
+        else { return .noSubject }
+        stage?(1)
 
         let original = CIImage(cgImage: cg)
         let extent = original.extent
@@ -35,10 +54,12 @@ enum Cutout {
         blend.backgroundImage = CIImage(color: .clear).cropped(to: extent)
         blend.maskImage = mask
         guard let composed = blend.outputImage,
-              let full = context.createCGImage(composed, from: extent, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!),
-              let out = cropToAlpha(full) else { return image }
+              let full = context.createCGImage(composed, from: extent, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+        else { return .noSubject }
+        stage?(2)
+        guard let out = cropToAlpha(full) else { return .noSubject }
         let k = image.size.width / CGFloat(max(cg.width, 1))
-        return NSImage(cgImage: out, size: NSSize(width: CGFloat(out.width) * k, height: CGFloat(out.height) * k))
+        return .cut(NSImage(cgImage: out, size: NSSize(width: CGFloat(out.width) * k, height: CGFloat(out.height) * k)))
     }
 
     /// Recadre sur la zone non transparente.

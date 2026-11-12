@@ -19,6 +19,17 @@ final class ImageAnnotation: PDFAnnotation {
     var original: NSImage?
     var originalBounds: NSRect?
     var cutoutBusy = false
+    /// Message bref affiché sur la carte quand le détourage n'a rien donné.
+    var cutoutMessage: String?
+    // Progression estimée : étape franchie (réelle) + avancée au temps dans l'étape en cours.
+    private var stage = 0, stageStart = Date(), tau: Double = 0.6
+    func beginCutoutProgress(megapixels: Double) { stage = 0; stageStart = Date(); tau = 0.35 + megapixels * 0.12 }
+    func advanceCutoutProgress(to s: Int, megapixels: Double) { stage = s; stageStart = Date(); tau = 0.25 + megapixels * (s == 1 ? 0.1 : 0.03) }
+    var cutoutFraction: Double {
+        let floors = [0.03, 0.55, 0.88, 0.98], t = Date().timeIntervalSince(stageStart)
+        let lo = floors[min(stage, 3)], hi = floors[min(stage + 1, 3)]
+        return lo + (hi - lo) * 0.92 * (1 - exp(-t / max(tau, 0.1)))
+    }
     init(image: NSImage, bounds: NSRect) {
         self.image = image
         super.init(bounds: bounds, forType: .stamp, withProperties: nil)
@@ -203,7 +214,10 @@ final class ReaderPDFView: PDFView {
         onContextChange?()
     }
 
+    /// Appelé à chaque rafraîchissement du calque (déplacement, défilement, zoom) : sert à suivre l'image sélectionnée.
+    var onOverlayRefresh: (() -> Void)?
     func refreshOverlay() {
+        defer { onOverlayRefresh?() }
         if let s = selected, s.page.annotations.contains(where: { $0 === s.annot }) {
             overlay.selectionRect = convert(s.annot.bounds, from: s.page)
             overlay.showHandles = canResize(s.annot)
@@ -597,17 +611,30 @@ final class ReaderPDFView: PDFView {
     func setCutout(_ a: ImageAnnotation, on page: PDFPage, enabled: Bool) {
         if enabled {
             guard a.original == nil, !a.cutoutBusy, let src = a.image else { return }
-            a.cutoutBusy = true
+            a.cutoutBusy = true; a.cutoutMessage = nil
+            let mp = Double(src.size.width * src.size.height) / 1_000_000
+            a.beginCutoutProgress(megapixels: mp)
+            onContextChange?()
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                let out = Cutout.apply(src)
+                let outcome = Cutout.apply(src) { st in DispatchQueue.main.async { a.advanceCutoutProgress(to: st + 1, megapixels: mp) } }
                 DispatchQueue.main.async {
                     a.cutoutBusy = false
-                    guard let self, out !== src, page.annotations.contains(where: { $0 === a }) else { self?.onContextChange?(); return }
-                    let k = a.bounds.width / max(src.size.width, 1)
-                    let c = NSPoint(x: a.bounds.midX, y: a.bounds.midY)
-                    a.original = src; a.originalBounds = a.bounds; a.image = out
-                    a.bounds = NSRect(x: c.x - out.size.width * k / 2, y: c.y - out.size.height * k / 2, width: out.size.width * k, height: out.size.height * k)
-                    self.annotationsChanged(on: page); self.refreshOverlay(); self.onContextChange?()
+                    guard let self else { return }
+                    switch outcome {
+                    case .cut(let out):
+                        guard page.annotations.contains(where: { $0 === a }) else { self.onContextChange?(); return }
+                        let k = a.bounds.width / max(src.size.width, 1)
+                        let c = NSPoint(x: a.bounds.midX, y: a.bounds.midY)
+                        a.original = src; a.originalBounds = a.bounds; a.image = out
+                        a.bounds = NSRect(x: c.x - out.size.width * k / 2, y: c.y - out.size.height * k / 2, width: out.size.width * k, height: out.size.height * k)
+                        self.annotationsChanged(on: page); self.refreshOverlay()
+                    case .noSubject: a.cutoutMessage = L.t("img.none")
+                    case .alreadyTransparent: a.cutoutMessage = L.t("img.transparent")
+                    }
+                    self.onContextChange?()
+                    if a.cutoutMessage != nil {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in a.cutoutMessage = nil; self?.onContextChange?() }
+                    }
                 }
             }
         } else if let o = a.original {

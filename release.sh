@@ -25,20 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Nouvelle barre d'outils au style macOS : icônes avec libellés, survol et sélection discrets, recherche native, onglets natifs.
-- Texte ajouté net (dessin vectoriel), y compris après enregistrement.
+- Correction : un texte ajouté ne reprend plus un fond jaune après enregistrement et réouverture.
 <!-- notes:en -->
 ## $VERSION
-- New macOS-style toolbar: icons with labels, subtle hover and selection, native search field and tabs.
-- Added text is now sharp (vector drawing), including after saving.
+- Fix: added text no longer gets a yellow background after saving and reopening.
 <!-- notes:es -->
 ## $VERSION
-- Nueva barra de herramientas al estilo macOS: iconos con etiquetas, resaltado discreto, búsqueda y pestañas nativas.
-- El texto añadido ahora es nítido (dibujo vectorial), también tras guardar.
+- Corrección: el texto añadido ya no recupera un fondo amarillo tras guardar y reabrir.
 <!-- notes:it -->
 ## $VERSION
-- Nuova barra degli strumenti in stile macOS: icone con etichette, evidenziazione discreta, ricerca e schede native.
-- Il testo aggiunto è ora nitido (disegno vettoriale), anche dopo il salvataggio.
+- Correzione: il testo aggiunto non riprende più uno sfondo giallo dopo il salvataggio e la riapertura.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

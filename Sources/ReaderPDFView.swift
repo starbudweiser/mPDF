@@ -15,6 +15,10 @@ enum Tool: Int, CaseIterable {
 /// Image posée sur la page : dessinée par la vue, figée dans la page à l'enregistrement (voir ReaderWC.flattenImages).
 final class ImageAnnotation: PDFAnnotation {
     var image: NSImage?
+    /// Image avant détourage (nil tant que l'image n'est pas détourée) et son cadre d'origine.
+    var original: NSImage?
+    var originalBounds: NSRect?
+    var cutoutBusy = false
     init(image: NSImage, bounds: NSRect) {
         self.image = image
         super.init(bounds: bounds, forType: .stamp, withProperties: nil)
@@ -567,12 +571,14 @@ final class ReaderPDFView: PDFView {
     // MARK: Images et fichiers déposés
 
     func placeImage(_ source: NSImage, on page: PDFPage, centeredAt c: NSPoint? = nil, fitting zone: NSRect? = nil) {
-        let image = Cutout.enabled ? Cutout.apply(source) : source
+        let image = source
         if let zone {
             let k = min(zone.width / max(image.size.width, 1), zone.height / max(image.size.height, 1))
             let w = image.size.width * k, h = image.size.height * k
             let a = ImageAnnotation(image: image, bounds: NSRect(x: zone.midX - w / 2, y: zone.midY - h / 2, width: w, height: h))
-            onAdd?(a, page); select(a, on: page); return
+            onAdd?(a, page); select(a, on: page)
+            if Cutout.enabled { setCutout(a, on: page, enabled: true) }
+            return
         }
         let pb = page.bounds(for: .cropBox)
         var w = min(image.size.width, pb.width * 0.4)
@@ -584,6 +590,31 @@ final class ReaderPDFView: PDFView {
         let a = ImageAnnotation(image: image, bounds: r)
         onAdd?(a, page)
         select(a, on: page)
+        if Cutout.enabled { setCutout(a, on: page, enabled: true) }
+    }
+
+    /// Détoure l'image (calcul en arrière-plan) ou rétablit l'original ; le cadre reste centré, l'échelle de l'image est conservée.
+    func setCutout(_ a: ImageAnnotation, on page: PDFPage, enabled: Bool) {
+        if enabled {
+            guard a.original == nil, !a.cutoutBusy, let src = a.image else { return }
+            a.cutoutBusy = true
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let out = Cutout.apply(src)
+                DispatchQueue.main.async {
+                    a.cutoutBusy = false
+                    guard let self, out !== src, page.annotations.contains(where: { $0 === a }) else { self?.onContextChange?(); return }
+                    let k = a.bounds.width / max(src.size.width, 1)
+                    let c = NSPoint(x: a.bounds.midX, y: a.bounds.midY)
+                    a.original = src; a.originalBounds = a.bounds; a.image = out
+                    a.bounds = NSRect(x: c.x - out.size.width * k / 2, y: c.y - out.size.height * k / 2, width: out.size.width * k, height: out.size.height * k)
+                    self.annotationsChanged(on: page); self.refreshOverlay(); self.onContextChange?()
+                }
+            }
+        } else if let o = a.original {
+            a.image = o; if let b = a.originalBounds { a.bounds = b }
+            a.original = nil; a.originalBounds = nil
+            annotationsChanged(on: page); refreshOverlay(); onContextChange?()
+        }
     }
 
     private func droppedURLs(_ info: NSDraggingInfo) -> [URL] {

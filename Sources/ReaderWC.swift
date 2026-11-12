@@ -638,6 +638,7 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     /// La barre de format (police, taille, style, couleur) apparaît avec l'outil Texte ou quand un texte est sélectionné.
     private func updateFormatBar() {
         if let c = choiceAnnot, pdfView.selected?.annot !== c { hideChoiceCard() }
+        updateImageCard()
         let selectedStyle = pdfView.selectedTextStyle
         let show = pdfView.tool == .text || pdfView.isEditingText || selectedStyle != nil
         if let st = selectedStyle { formatBar.apply(st) } else if show { formatBar.apply(pdfView.textStyle) }
@@ -652,6 +653,47 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         a.font = font; a.fontColor = color; a.bounds = bounds
         pdfView.annotationsChanged(on: page); pdfView.refreshOverlay(); updateFormatBar()
         doc.undoManager?.registerUndo(withTarget: self) { $0.restoreStyle(a, page, cf, cc, cb) }
+    }
+
+    /// Image sélectionnée : une petite carte propose de la détourer (ou de rétablir l'original).
+    private var imageCard: NSVisualEffectView?
+    private weak var imageCardAnnot: ImageAnnotation?
+    private var imageCardCut = false
+
+    private func updateImageCard() {
+        guard let sel = pdfView.selected, let a = sel.annot as? ImageAnnotation, let root = pdfView.superview else {
+            imageCard?.removeFromSuperview(); imageCard = nil; imageCardAnnot = nil; return
+        }
+        let cut = a.original != nil
+        if imageCardAnnot === a, imageCardCut == cut, imageCard != nil { positionImageCard(a, sel.page, root); return }
+        imageCard?.removeFromSuperview()
+        let card = NSVisualEffectView(); card.material = .hudWindow; card.blendingMode = .withinWindow; card.state = .active
+        card.wantsLayer = true; card.layer?.cornerRadius = 10; card.layer?.masksToBounds = true
+        let b = BarButton(symbol: cut ? "arrow.uturn.backward" : "wand.and.stars", label: L.t(cut ? "img.uncut" : "img.cut"), tip: L.t(cut ? "img.uncutTip" : "img.cutTip"), target: nil, action: #selector(NSObject.description))
+        let page = sel.page
+        let act = MenuAction { [weak self, weak a] in if let a { self?.pdfView.setCutout(a, on: page, enabled: !cut) } }
+        b.target = act; b.action = #selector(MenuAction.run)
+        let row = NSStackView(views: [b]); row.edgeInsets = NSEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
+        row.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(row)
+        NSLayoutConstraint.activate([row.leadingAnchor.constraint(equalTo: card.leadingAnchor), row.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+                                     row.topAnchor.constraint(equalTo: card.topAnchor), row.bottomAnchor.constraint(equalTo: card.bottomAnchor)])
+        card.layoutSubtreeIfNeeded()
+        card.setFrameSize(card.fittingSize)
+        card.translatesAutoresizingMaskIntoConstraints = true
+        root.addSubview(card)
+        objc_setAssociatedObject(card, Unmanaged.passUnretained(card).toOpaque(), act, .OBJC_ASSOCIATION_RETAIN)
+        imageCard = card; imageCardAnnot = a; imageCardCut = cut
+        positionImageCard(a, page, root)
+    }
+    private func positionImageCard(_ a: ImageAnnotation, _ page: PDFPage, _ root: NSView) {
+        guard let card = imageCard else { return }
+        let size = card.frame.size
+        let r = pdfView.convert(a.bounds, from: page)
+        var y = r.minY - size.height - 8
+        if y < 8 { y = min(r.maxY + 8, root.bounds.height - size.height - 8) }
+        let x = max(8, min(r.midX - size.width / 2, root.bounds.width - size.width - 8))
+        card.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
     /// Double-clic sur une zone gommée : une petite carte propose d'y écrire du texte ou d'y placer une image.
@@ -879,7 +921,7 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         guard let w = window else { return }
         for t in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             guard let b = w.standardWindowButton(t), let sv = b.superview else { continue }
-            b.setFrameOrigin(NSPoint(x: b.frame.origin.x, y: sv.bounds.height - barH / 2 - b.frame.height / 2 - (sv.bounds.height - 28)))
+            b.setFrameOrigin(NSPoint(x: b.frame.origin.x, y: sv.bounds.height - barH / 2 - b.frame.height / 2))
         }
     }
     func windowDidEndLiveResize(_ n: Notification) { alignTrafficLights() }

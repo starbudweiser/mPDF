@@ -77,7 +77,16 @@ final class BarButton: NSButton {
     private var labelText = ""
 
     private static func symbol(_ name: String, _ tip: String, _ size: CGFloat) -> NSImage? {
-        NSImage(systemSymbolName: name, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: size, weight: .regular))
+        guard let sym = NSImage(systemSymbolName: name, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: size, weight: .regular)) else { return nil }
+        // Symbole centré dans un cadre fixe : l'alignement vertical ne dépend plus des métriques propres à chaque symbole.
+        let side = ceil(size * 1.4)
+        let canvas = NSImage(size: NSSize(width: side * 1.3, height: side), flipped: false) { r in
+            let s = sym.size
+            sym.draw(in: NSRect(x: (r.width - s.width) / 2, y: (r.height - s.height) / 2, width: s.width, height: s.height))
+            return true
+        }
+        canvas.isTemplate = true
+        return canvas
     }
     private func common(_ name: String, _ target: AnyObject?, _ action: Selector) {
         toolTip = name

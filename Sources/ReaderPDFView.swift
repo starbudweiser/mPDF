@@ -566,7 +566,8 @@ final class ReaderPDFView: PDFView {
 
     // MARK: Images et fichiers déposés
 
-    func placeImage(_ image: NSImage, on page: PDFPage, centeredAt c: NSPoint? = nil, fitting zone: NSRect? = nil) {
+    func placeImage(_ source: NSImage, on page: PDFPage, centeredAt c: NSPoint? = nil, fitting zone: NSRect? = nil) {
+        let image = Cutout.enabled ? Cutout.apply(source) : source
         if let zone {
             let k = min(zone.width / max(image.size.width, 1), zone.height / max(image.size.height, 1))
             let w = image.size.width * k, h = image.size.height * k

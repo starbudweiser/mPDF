@@ -103,14 +103,19 @@ private final class OverlayView: NSView {
     override func mouseUp(with e: NSEvent) { superview?.mouseUp(with: e) }
     private func handleCursorRects() -> [(NSRect, NSCursor)] {
         guard let r = selectionRect, showHandles else { return [] }
-        return ReaderPDFView.Handle.allCases.map { h in (ReaderPDFView.handleRect(h, in: r).insetBy(dx: -4, dy: -4), Self.cursor(for: h)) }
+        return ReaderPDFView.Handle.allCases.map { h in (ReaderPDFView.handleRect(h, in: r).insetBy(dx: -4, dy: -4), Self.cursor(for: h, flipped: isFlipped)) }
     }
     override func resetCursorRects() {
         super.resetCursorRects()
         for (rect, cursor) in handleCursorRects() { addCursorRect(rect, cursor: cursor) }
     }
     /// Curseurs de redimensionnement précis : flèche horizontale ou verticale sur les côtés, diagonale sur les coins.
-    static func cursor(for h: ReaderPDFView.Handle) -> NSCursor {
+    /// `flipped` : la poignée « haut » (minY) est en haut de l'écran seulement si la vue est inversée ; sinon haut et bas sont échangés.
+    static func cursor(for handle: ReaderPDFView.Handle, flipped: Bool) -> NSCursor {
+        var h = handle
+        if !flipped {
+            switch handle { case .t: h = .b; case .b: h = .t; case .tl: h = .bl; case .bl: h = .tl; case .tr: h = .br; case .br: h = .tr; default: break }
+        }
         if #available(macOS 15.0, *) {
             switch h {
             case .t: return .frameResize(position: .top, directions: .all)
@@ -281,7 +286,7 @@ final class ReaderPDFView: PDFView {
     func updateHandleCursor(windowPoint wp: NSPoint) {
         let p = convert(wp, from: nil)
         guard bounds.contains(p), editor == nil, let h = handleAt(p) else { return }
-        let c = OverlayView.cursor(for: h)
+        let c = OverlayView.cursor(for: h, flipped: overlay.isFlipped)
         c.set()
         DispatchQueue.main.async { c.set() }
     }

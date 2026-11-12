@@ -26,15 +26,19 @@ if [ -z "$NOTES" ]; then
 <!-- notes:fr -->
 ## $VERSION
 - Nouvelle barre d'outils au style macOS : icônes avec libellés, survol et sélection discrets, recherche native, onglets natifs.
+- Texte ajouté net (dessin vectoriel), y compris après enregistrement.
 <!-- notes:en -->
 ## $VERSION
 - New macOS-style toolbar: icons with labels, subtle hover and selection, native search field and tabs.
+- Added text is now sharp (vector drawing), including after saving.
 <!-- notes:es -->
 ## $VERSION
 - Nueva barra de herramientas al estilo macOS: iconos con etiquetas, resaltado discreto, búsqueda y pestañas nativas.
+- El texto añadido ahora es nítido (dibujo vectorial), también tras guardar.
 <!-- notes:it -->
 ## $VERSION
 - Nuova barra degli strumenti in stile macOS: icone con etichette, evidenziazione discreta, ricerca e schede native.
+- Il testo aggiunto è ora nitido (disegno vettoriale), anche dopo il salvataggio.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

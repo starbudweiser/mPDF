@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Première version : lecture en pleine page, barre d'outils et panneaux glissants, remplissage de modèles, ajout de PDF et d'images par glisser-déposer.
+- Page à fleur de la fenêtre, sans vide sur les côtés ; barre d'outils plus robuste ; édition, glisser-déposer et formulaires entièrement testés.
 <!-- notes:en -->
 ## $VERSION
-- First release: full-page reading, sliding toolbar and panels, template filling, drag-and-drop of PDFs and images.
+- Page flush with the window, no gap on the sides; sturdier toolbar; editing, drag-and-drop and forms fully tested.
 <!-- notes:es -->
 ## $VERSION
-- Primera versión: lectura a página completa, barra de herramientas y paneles deslizantes, relleno de plantillas, arrastrar y soltar PDF e imágenes.
+- Página a ras de la ventana, sin huecos a los lados; barra de herramientas más robusta; edición, arrastrar y soltar y formularios probados a fondo.
 <!-- notes:it -->
 ## $VERSION
-- Prima versione: lettura a pagina intera, barra degli strumenti e pannelli scorrevoli, compilazione di modelli, trascinamento di PDF e immagini.
+- Pagina a filo della finestra, senza vuoti ai lati; barra degli strumenti più robusta; modifica, trascinamento e moduli testati a fondo.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

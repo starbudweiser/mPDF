@@ -184,6 +184,7 @@ final class ReaderPDFView: PDFView {
     override func mouseDown(with e: NSEvent) {
         if editor != nil { commitEditing() }
         let pt = convert(e.locationInWindow, from: nil)
+        guard bounds.contains(pt) else { return super.mouseDown(with: e) }   // clic hors de la page (bord, barre de titre) : ne touche ni la sélection ni les outils
         switch tool {
         case .select:
             if let h = handleAt(pt), let s = selected { startResize(h, s, e); return }

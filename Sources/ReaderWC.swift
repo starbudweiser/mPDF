@@ -301,14 +301,17 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         }
         let flex = row.arrangedSubviews[4]; flex.setContentHuggingPriority(.init(1), for: .horizontal); flex.setContentCompressionResistancePriority(.init(1), for: .horizontal)
         row.setVisibilityPriority(NSStackView.VisibilityPriority(rawValue: 100), for: flex)
+        row.setClippingResistancePriority(.init(250), for: .horizontal)   // peut être plus étroite que son contenu : les éléments se retirent
         barRow = row
         row.translatesAutoresizingMaskIntoConstraints = false
         bar.addSubview(row)
         NSLayoutConstraint.activate([
             row.leadingAnchor.constraint(equalTo: bar.leadingAnchor, constant: 84),
-            row.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -Socle.M.space3),
+            row.trailingAnchor.constraint(lessThanOrEqualTo: bar.trailingAnchor, constant: -Socle.M.space3),   // la barre ne force jamais la largeur de la fenêtre
             row.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
         ])
+        let fill = row.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -Socle.M.space3)
+        fill.priority = .init(750); fill.isActive = true
         return bar
     }
 
@@ -782,7 +785,6 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
             b.setFrameOrigin(NSPoint(x: b.frame.origin.x, y: sv.bounds.height - Socle.M.sizeBar / 2 - b.frame.height / 2 - (sv.bounds.height - 28)))
         }
     }
-    func windowDidResize(_ n: Notification) { alignTrafficLights(); applyFit() }
     func windowDidEndLiveResize(_ n: Notification) { alignTrafficLights() }
     func windowWillClose(_ n: Notification) {
         savePosition()
@@ -948,3 +950,4 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         if let o = outlineView.item(atRow: outlineView.selectedRow) as? PDFOutline, let dest = o.destination { pdfView.go(to: dest) }
     }
 }
+

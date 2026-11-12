@@ -48,17 +48,29 @@ final class BarButton: NSButton {
     var selectedState = false { didSet { refresh() } }
     private var hover = false { didSet { refresh() } }
     private let label: String?
+    private let kind: Kind
+    private enum Kind { case icon, tab, iconLabel }
 
     init(symbol: String, tip: String, target: AnyObject?, action: Selector) {
-        label = nil
+        label = nil; kind = .icon
         super.init(frame: .zero)
         image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular))
         toolTip = tip
         common(tip, target, action)
         widthAnchor.constraint(equalToConstant: Socle.M.sizeControl).isActive = true
     }
+    /// Icône + libellé : pour les outils de modification que l'on doit trouver du premier coup.
+    init(symbol: String, label: String, tip: String, target: AnyObject?, action: Selector) {
+        self.label = label; kind = .iconLabel
+        super.init(frame: .zero)
+        image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular))
+        toolTip = tip
+        common(tip, target, action)
+        let w = ceil(NSAttributedString(string: label, attributes: [.font: S.font(12, .semibold)]).size().width) + 16 + 6 + 14
+        widthAnchor.constraint(equalToConstant: w).isActive = true
+    }
     init(title: String, target: AnyObject?, action: Selector) {
-        label = title
+        label = title; kind = .tab
         super.init(frame: .zero)
         common(title, target, action)
         widthAnchor.constraint(greaterThanOrEqualToConstant: 72).isActive = true
@@ -67,12 +79,13 @@ final class BarButton: NSButton {
 
     private func common(_ name: String, _ target: AnyObject?, _ action: Selector) {
         self.target = target; self.action = action
-        imagePosition = label == nil ? .imageOnly : .noImage
+        imagePosition = kind == .icon ? .imageOnly : (kind == .tab ? .noImage : .imageLeading)
+        imageHugsTitle = true
         isBordered = false; bezelStyle = .regularSquare; imageScaling = .scaleNone; focusRingType = .exterior
         setButtonType(.momentaryChange)
         wantsLayer = true; layer?.cornerRadius = Socle.M.radius
         translatesAutoresizingMaskIntoConstraints = false
-        heightAnchor.constraint(equalToConstant: label == nil ? Socle.M.sizeControl : 28).isActive = true
+        heightAnchor.constraint(equalToConstant: kind == .tab ? 28 : Socle.M.sizeControl).isActive = true
         setAccessibilityLabel(name)
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
         refresh()
@@ -89,7 +102,10 @@ final class BarButton: NSButton {
         let fg: NSColor = selectedState ? S.onAccentFill : S.text
         effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = bg.cgColor }
         contentTintColor = fg
-        if let label {
+        if let label, kind == .iconLabel {
+            let p = NSMutableParagraphStyle(); p.alignment = .center
+            attributedTitle = NSAttributedString(string: label, attributes: [.font: S.font(12, .semibold), .foregroundColor: fg, .paragraphStyle: p])
+        } else if let label {
             let p = NSMutableParagraphStyle(); p.alignment = .center
             attributedTitle = NSAttributedString(string: label, attributes: [.font: S.font(12, selectedState ? .semibold : .regular), .foregroundColor: selectedState ? S.textStrong : S.textMuted, .paragraphStyle: p])
             effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = (selectedState ? S.control : (hover ? S.controlHover.withAlphaComponent(0.5) : S.bgSunken)).cgColor }

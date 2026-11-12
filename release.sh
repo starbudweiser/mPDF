@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Page à fleur de la fenêtre, sans vide sur les côtés ; barre d'outils plus robuste ; édition, glisser-déposer et formulaires entièrement testés.
+- Barre d'outils repensée : Texte, Gomme et Image en libellés. Choix de la police, de la taille, du style et de la couleur. Double-clic sur une zone gommée : écrire du texte ou placer une image.
 <!-- notes:en -->
 ## $VERSION
-- Page flush with the window, no gap on the sides; sturdier toolbar; editing, drag-and-drop and forms fully tested.
+- Redesigned toolbar: Text, Eraser and Image are labelled. Choose font, size, style and colour. Double-click an erased area to write text or place an image.
 <!-- notes:es -->
 ## $VERSION
-- Página a ras de la ventana, sin huecos a los lados; barra de herramientas más robusta; edición, arrastrar y soltar y formularios probados a fondo.
+- Barra de herramientas rediseñada: Texto, Borrador e Imagen con etiquetas. Elección de fuente, tamaño, estilo y color. Doble clic en una zona borrada: escribir texto o colocar una imagen.
 <!-- notes:it -->
 ## $VERSION
-- Pagina a filo della finestra, senza vuoti ai lati; barra degli strumenti più robusta; modifica, trascinamento e moduli testati a fondo.
+- Barra degli strumenti ridisegnata: Testo, Gomma e Immagine con etichette. Scelta di carattere, dimensione, stile e colore. Doppio clic su un'area cancellata: scrivere testo o inserire un'immagine.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

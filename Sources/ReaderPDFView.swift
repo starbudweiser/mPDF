@@ -70,7 +70,7 @@ final class ReaderPDFView: PDFView {
     enum Handle: CaseIterable { case tl, t, tr, r, br, b, bl, l }
 
     var tool: Tool = .select {
-        didSet { window?.invalidateCursorRects(for: self); if tool != .select { select(nil) } }
+        didSet { window?.invalidateCursorRects(for: self); if tool != .select { select(nil) }; onContextChange?() }
     }
     var onAdd: ((PDFAnnotation, PDFPage) -> Void)?
     var onEdit: ((PDFAnnotation, PDFPage) -> Void)?            // note : feuille de saisie
@@ -82,6 +82,16 @@ final class ReaderPDFView: PDFView {
     var fitsPage = true
     var onToolChange: ((Tool) -> Void)?
     var onDropFiles: (([URL], PDFPage, NSPoint, NSPoint) -> Void)?
+    var onContextChange: (() -> Void)?
+    var onWhiteoutDoubleClick: ((PDFAnnotation, PDFPage, NSPoint) -> Void)?
+    var onStyleApplied: ((PDFAnnotation, PDFPage, NSFont?, NSColor?, NSRect) -> Void)?
+    var textStyle = TextStyle.load()
+    var isEditingText: Bool { editor != nil }
+    /// Style du texte sélectionné (pour la barre de format).
+    var selectedTextStyle: TextStyle? {
+        guard let s = selected, s.annot.type == "FreeText" else { return nil }
+        return TextStyle(font: s.annot.font, color: s.annot.fontColor)
+    }
 
     private(set) var selected: (annot: PDFAnnotation, page: PDFPage)?
     private let overlay = OverlayView()
@@ -135,6 +145,7 @@ final class ReaderPDFView: PDFView {
         return NSRect(x: x - s / 2, y: y - s / 2, width: s, height: s)
     }
 
+    static let whiteoutTag = "mPDF.whiteout"
     private static let selectableTypes: Set<String> = ["Highlight", "Underline", "StrikeOut", "Text", "FreeText", "Square", "Circle", "Line", "Ink", "Stamp"]
     private static let markupTypes: Set<String> = ["Highlight", "Underline", "StrikeOut"]
 
@@ -144,6 +155,7 @@ final class ReaderPDFView: PDFView {
     func select(_ a: PDFAnnotation?, on page: PDFPage? = nil) {
         if let a, let page { selected = (a, page) } else { selected = nil }
         refreshOverlay()
+        onContextChange?()
     }
 
     func refreshOverlay() {
@@ -190,6 +202,7 @@ final class ReaderPDFView: PDFView {
             if let h = handleAt(pt), let s = selected { startResize(h, s, e); return }
             if let (a, p) = hitAnnotation(e) {
                 select(a, on: p)
+                if e.clickCount == 2, a.userName == Self.whiteoutTag { onWhiteoutDoubleClick?(a, p, pt); return }
                 if e.clickCount == 2, a.type == "FreeText" { beginEditing(a, on: p, isNew: false); return }
                 if e.clickCount == 2, a.type == "Text" { onEdit?(a, p); return }
                 if canMove(a) { startMove(a, p, e) }
@@ -226,6 +239,7 @@ final class ReaderPDFView: PDFView {
 
     override func keyDown(with e: NSEvent) {
         if let s = selected, e.keyCode == 51 || e.keyCode == 117 { onDeleteSelected?(s.annot, s.page); select(nil); return }
+        if e.keyCode == 36, let s = selected, s.annot.userName == Self.whiteoutTag { onWhiteoutDoubleClick?(s.annot, s.page, convert(s.annot.bounds, from: s.page).origin); return }
         if e.keyCode == 36, let s = selected, s.annot.type == "FreeText" { beginEditing(s.annot, on: s.page, isNew: false); return }
         if e.keyCode == 53 { if selected != nil { select(nil) } else if tool != .select { setTool(.select) }; return }
         super.keyDown(with: e)
@@ -305,23 +319,55 @@ final class ReaderPDFView: PDFView {
         guard let page = page(for: pt, nearest: true) else { return }
         let p = convert(pt, to: page)
         let a = PDFAnnotation(bounds: NSRect(x: p.x, y: p.y - 30, width: 240, height: 30), forType: .freeText, withProperties: nil)
-        a.font = NSFont.systemFont(ofSize: 16)
-        a.fontColor = NSColor(srgbRed: 0.1, green: 0.1, blue: 0.12, alpha: 1)
+        a.font = textStyle.font
+        a.fontColor = textStyle.color
         a.color = .clear
         let border = PDFBorder(); border.lineWidth = 0; a.border = border
         a.contents = ""
         beginEditing(a, on: page, isNew: true)
     }
 
+    /// Texte dans une zone donnée (zone gommée) : saisie en place, style courant.
+    func beginText(in rect: NSRect, on page: PDFPage) {
+        let r = rect.insetBy(dx: 4, dy: 4)
+        let a = PDFAnnotation(bounds: r, forType: .freeText, withProperties: nil)
+        a.font = textStyle.font
+        a.fontColor = textStyle.color
+        a.color = .clear
+        let border = PDFBorder(); border.lineWidth = 0; a.border = border
+        a.alignment = .center
+        a.contents = ""
+        beginEditing(a, on: page, isNew: true)
+    }
+
+    /// Applique un style : au texte en cours de saisie, au texte sélectionné, et aux prochains textes.
+    func applyTextStyle(_ st: TextStyle) {
+        textStyle = st
+        if let ed = editor, let ctx = editing {
+            ctx.a.font = st.font; ctx.a.fontColor = st.color
+            ed.font = NSFont(descriptor: st.font.fontDescriptor, size: st.font.pointSize * scaleFactor) ?? st.font
+            ed.textColor = st.color
+            textDidChange(Notification(name: NSText.didChangeNotification))
+        } else if let sel = selected, sel.annot.type == "FreeText" {
+            let a = sel.annot
+            let oldFont = a.font, oldColor = a.fontColor, oldBounds = a.bounds
+            a.font = st.font; a.fontColor = st.color
+            if let text = a.contents, !text.isEmpty, a.userName != Self.whiteoutTag { a.bounds = fittedBounds(a, text: text) }
+            annotationsChanged(on: sel.page); refreshOverlay()
+            onStyleApplied?(a, sel.page, oldFont, oldColor, oldBounds)
+        }
+    }
+
     func beginEditing(_ a: PDFAnnotation, on page: PDFPage, isNew: Bool) {
         commitEditing()
         let ed = InlineEditor(frame: convert(a.bounds, from: page))
-        ed.isRichText = false; ed.drawsBackground = true
-        ed.backgroundColor = NSColor.white.withAlphaComponent(0.9)
+        ed.isRichText = false; ed.drawsBackground = false
         ed.textColor = a.fontColor ?? .black
-        ed.font = NSFont.systemFont(ofSize: (a.font?.pointSize ?? 16) * scaleFactor)
+        let base = a.font ?? NSFont.systemFont(ofSize: 16)
+        ed.font = NSFont(descriptor: base.fontDescriptor, size: base.pointSize * scaleFactor) ?? base
         ed.insertionPointColor = NSColor.controlAccentColor
         ed.textContainerInset = NSSize(width: 2, height: 2)
+        ed.alignment = a.alignment
         ed.string = a.contents ?? ""
         ed.wantsLayer = true; ed.layer?.borderColor = NSColor.controlAccentColor.cgColor; ed.layer?.borderWidth = 1.5
         ed.isVerticallyResizable = true; ed.isHorizontallyResizable = false
@@ -334,6 +380,7 @@ final class ReaderPDFView: PDFView {
         a.shouldDisplay = false
         annotationsChanged(on: page)
         window?.makeFirstResponder(ed)
+        onContextChange?()
     }
 
     private func fittedBounds(_ a: PDFAnnotation, text: String) -> NSRect {
@@ -351,6 +398,7 @@ final class ReaderPDFView: PDFView {
         ed.onCommit = nil
         ed.removeFromSuperview()
         ctx.a.shouldDisplay = true
+        defer { onContextChange?() }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             if !ctx.isNew { annotationsChanged(on: ctx.page) }
@@ -450,7 +498,7 @@ final class ReaderPDFView: PDFView {
         case .rect, .ellipse, .whiteout:
             let r = NSRect(x: min(s.x, c.x), y: min(s.y, c.y), width: max(abs(c.x - s.x), 6), height: max(abs(c.y - s.y), 6))
             a = PDFAnnotation(bounds: r, forType: kind == .ellipse ? .circle : .square, withProperties: nil)
-            if kind == .whiteout { a.color = .white; a.interiorColor = .white; let b0 = PDFBorder(); b0.lineWidth = 0; a.border = b0 }
+            if kind == .whiteout { a.color = .white; a.interiorColor = .white; a.userName = Self.whiteoutTag; let b0 = PDFBorder(); b0.lineWidth = 0; a.border = b0 }
             else { a.color = .systemRed; a.border = border }
         case .arrow:
             let pad: CGFloat = 10
@@ -477,7 +525,13 @@ final class ReaderPDFView: PDFView {
 
     // MARK: Images et fichiers déposés
 
-    func placeImage(_ image: NSImage, on page: PDFPage, centeredAt c: NSPoint? = nil) {
+    func placeImage(_ image: NSImage, on page: PDFPage, centeredAt c: NSPoint? = nil, fitting zone: NSRect? = nil) {
+        if let zone {
+            let k = min(zone.width / max(image.size.width, 1), zone.height / max(image.size.height, 1))
+            let w = image.size.width * k, h = image.size.height * k
+            let a = ImageAnnotation(image: image, bounds: NSRect(x: zone.midX - w / 2, y: zone.midY - h / 2, width: w, height: h))
+            onAdd?(a, page); select(a, on: page); return
+        }
         let pb = page.bounds(for: .cropBox)
         var w = min(image.size.width, pb.width * 0.4)
         var h = w * image.size.height / max(image.size.width, 1)

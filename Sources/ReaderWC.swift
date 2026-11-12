@@ -74,9 +74,11 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     private var pagesBtn: BarButton!, notesBtn: BarButton!, displayBtn: BarButton!
     private var barRow: NSStackView!
     private var imageBtn: BarButton!, moreBtn: BarButton!
-    static let directTools: [Tool] = [.select, .hand, .highlight, .text, .pen, .check]
+    static let directTools: [Tool] = [.select, .hand, .text, .whiteout, .check, .highlight, .pen]
     private var bar: NSVisualEffectView!, barLine: FlatView!
     private let hud = PageHUD()
+    private let formatBar = FormatBar()
+    private var formatBarShown = false
     private var barTop: NSLayoutConstraint!
     private(set) var chromeVisible = false
     private var hideWork: DispatchWorkItem?
@@ -144,6 +146,10 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         pdfView.onTextChanged = { [weak self] a, p, oldText, oldBounds in self?.registerEdit(a, p, oldText, oldBounds) }
         pdfView.onGeometry = { [weak self] a, p, old, new in self?.registerGeometry(a, p, old, new) }
         pdfView.onDeleteSelected = { [weak self] a, p in self?.removeAnnotation(a, from: p) }
+        pdfView.onContextChange = { [weak self] in self?.updateFormatBar() }
+        pdfView.onStyleApplied = { [weak self] a, p, f, c, b in self?.registerStyle(a, p, f, c, b) }
+        pdfView.onWhiteoutDoubleClick = { [weak self] a, p, vp in self?.whiteoutMenu(a, p, at: vp) }
+        formatBar.onChange = { [weak self] st in self?.pdfView.applyTextStyle(st) }
         pdfView.onToolChange = { [weak self] t in self?.updateToolButtons(t) }
         pdfView.onDropFiles = { [weak self] urls, page, pp, vp in self?.handleDrop(urls, page: page, pagePoint: pp, viewPoint: vp) }
         pdfView.onLayout = { [weak self] in self?.applyFit() }
@@ -232,7 +238,9 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         // Barre d'en-tête (size-bar) : calque au-dessus de tout, masqué par défaut
         bar = buildBar()
         barLine = FlatView.hairline(vertical: false)
-        for v in [hud, bar!, barLine!] { root.addSubview(v) }
+        for v in [hud, formatBar, bar!, barLine!] { root.addSubview(v) }
+        NSLayoutConstraint.activate([formatBar.centerXAnchor.constraint(equalTo: root.centerXAnchor), formatBar.topAnchor.constraint(equalTo: root.topAnchor, constant: barH + 12),
+                                     formatBar.leadingAnchor.constraint(greaterThanOrEqualTo: root.leadingAnchor, constant: 8), formatBar.trailingAnchor.constraint(lessThanOrEqualTo: root.trailingAnchor, constant: -8)])
         NSLayoutConstraint.activate([hud.centerXAnchor.constraint(equalTo: root.centerXAnchor), hud.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -22)])
         barTop = bar.topAnchor.constraint(equalTo: root.topAnchor, constant: -barH - 1)
         NSLayoutConstraint.activate([
@@ -275,28 +283,33 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         bar.translatesAutoresizingMaskIntoConstraints = false
         func group(_ b: [BarButton]) -> NSStackView { let g = NSStackView(views: b); g.spacing = 2; g.translatesAutoresizingMaskIntoConstraints = false; return g }
         pagesBtn = BarButton(symbol: "sidebar.left", tip: L.t("menu.sidebar"), target: self, action: #selector(toggleSidebar))
-        let zoom = group([
-            BarButton(symbol: "minus.magnifyingglass", tip: L.t("menu.zoomOut"), target: self, action: #selector(zoomOut(_:))),
-            BarButton(symbol: "plus.magnifyingglass", tip: L.t("menu.zoomIn"), target: self, action: #selector(zoomIn(_:))),
-            BarButton(symbol: "arrow.left.and.right", tip: L.t("menu.fitWidth"), target: self, action: #selector(fitWidth(_:))),
-            BarButton(symbol: "arrow.up.left.and.down.right.magnifyingglass", tip: L.t("menu.fitPage"), target: self, action: #selector(fitPage(_:)))])
-        toolButtons = Self.directTools.map { t in
-            let b = BarButton(symbol: t.symbol, tip: L.t(t.key), target: self, action: #selector(toolClicked(_:))); b.tag = t.rawValue; return b }
-        toolButtons[0].selectedState = true
-        imageBtn = BarButton(symbol: "photo", tip: L.t("menu.insertImage"), target: self, action: #selector(insertImage(_:)))
+        func toolBtn(_ t: Tool, label: String? = nil) -> BarButton {
+            let b = label.map { BarButton(symbol: t.symbol, label: $0, tip: L.t(t.key), target: self, action: #selector(toolClicked(_:))) }
+                ?? BarButton(symbol: t.symbol, tip: L.t(t.key), target: self, action: #selector(toolClicked(_:)))
+            b.tag = t.rawValue; return b
+        }
+        // Naviguer / choisir
+        let bSelect = toolBtn(.select), bHand = toolBtn(.hand)
+        // Modifier le document : outils nommés, faciles à trouver
+        let bText = toolBtn(.text, label: L.t("tb.text")), bEraser = toolBtn(.whiteout, label: L.t("tb.eraser"))
+        imageBtn = BarButton(symbol: "photo", label: L.t("tb.image"), tip: L.t("menu.insertImage"), target: self, action: #selector(insertImage(_:)))
+        // Annoter
+        let bCheck = toolBtn(.check), bHigh = toolBtn(.highlight), bPen = toolBtn(.pen)
+        toolButtons = [bSelect, bHand, bText, bEraser, bCheck, bHigh, bPen]
+        bSelect.selectedState = true
         moreBtn = BarButton(symbol: "ellipsis", tip: L.t("tb.more"), target: self, action: #selector(showToolsMenu(_:)))
-        displayBtn = BarButton(symbol: "rectangle.grid.1x2", tip: L.t("tb.display"), target: self, action: #selector(showDisplayMenu(_:)))
+        displayBtn = BarButton(symbol: "magnifyingglass.circle", tip: L.t("tb.display"), target: self, action: #selector(showDisplayMenu(_:)))
         notesBtn = BarButton(symbol: "sidebar.right", tip: L.t("menu.notesPanel"), target: self, action: #selector(toggleNotes))
 
         searchField.target = self; searchField.action = #selector(search(_:))
-        searchField.widthAnchor.constraint(equalToConstant: 180).isActive = true
-        let tools = group(toolButtons + [imageBtn, moreBtn])
+        searchField.widthAnchor.constraint(equalToConstant: 120).isActive = true
+        let nav = group([bSelect, bHand]), edit = group([bText, bEraser, imageBtn]), annotate = group([bCheck, bHigh, bPen, moreBtn])
 
-        let row = NSStackView(views: [pagesBtn, zoom, tools, displayBtn, NSView(), searchField, notesBtn])
-        row.spacing = Socle.M.space4
+        let row = NSStackView(views: [pagesBtn, nav, edit, annotate, NSView(), displayBtn, searchField, notesBtn])
+        row.spacing = 10
         row.detachesHiddenViews = true
         // Quand la fenêtre est étroite, les éléments se retirent d'eux-mêmes, du moins important au plus important.
-        for (v, pr) in [(pagesBtn!, 1000), (notesBtn!, 1000), (searchField, 800), (tools, 700), (zoom, 600), (displayBtn!, 500)] as [(NSView, Float)] {
+        for (v, pr) in [(pagesBtn!, 1000), (notesBtn!, 1000), (edit, 950), (nav, 900), (annotate, 850), (displayBtn!, 700), (searchField, 600)] as [(NSView, Float)] {
             row.setVisibilityPriority(NSStackView.VisibilityPriority(rawValue: pr), for: v)
         }
         let flex = row.arrangedSubviews[4]; flex.setContentHuggingPriority(.init(1), for: .horizontal); flex.setContentCompressionResistancePriority(.init(1), for: .horizontal)
@@ -399,6 +412,10 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     /// Menu d'affichage : modes de page et côté du panneau des pages.
     @objc private func showDisplayMenu(_ b: BarButton) {
         let menu = NSMenu()
+        for (k, sel, sym) in [("menu.zoomIn", #selector(zoomIn(_:)), "plus.magnifyingglass"), ("menu.zoomOut", #selector(zoomOut(_:)), "minus.magnifyingglass"), ("menu.fitWidth", #selector(fitWidth(_:)), "arrow.left.and.right"), ("menu.fitPage", #selector(fitPage(_:)), "arrow.up.left.and.down.right.magnifyingglass")] as [(String, Selector, String)] {
+            let it = NSMenuItem(title: L.t(k), action: sel, keyEquivalent: ""); it.target = self; it.image = NSImage(systemSymbolName: sym, accessibilityDescription: nil); menu.addItem(it)
+        }
+        menu.addItem(.separator())
         for (i, k) in ["menu.single", "menu.continuous", "menu.twoUp", "menu.twoUpContinuous"].enumerated() {
             let it = NSMenuItem(title: L.t(k), action: #selector(selectDisplay(_:)), keyEquivalent: ""); it.tag = i; it.target = self; menu.addItem(it)
         }
@@ -602,6 +619,70 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         toolButtons.forEach { $0.selectedState = $0.tag == t.rawValue }
         moreBtn?.selectedState = !Self.directTools.contains(t)
     }
+    /// La barre de format (police, taille, style, couleur) apparaît avec l'outil Texte ou quand un texte est sélectionné.
+    private func updateFormatBar() {
+        if let c = choiceAnnot, pdfView.selected?.annot !== c { hideChoiceCard() }
+        let selectedStyle = pdfView.selectedTextStyle
+        let show = pdfView.tool == .text || pdfView.isEditingText || selectedStyle != nil
+        if let st = selectedStyle { formatBar.apply(st) } else if show { formatBar.apply(pdfView.textStyle) }
+        if show != formatBarShown { formatBarShown = show; formatBar.setVisible(show) }
+    }
+    private func registerStyle(_ a: PDFAnnotation, _ page: PDFPage, _ oldFont: NSFont?, _ oldColor: NSColor?, _ oldBounds: NSRect) {
+        doc.undoManager?.registerUndo(withTarget: self) { $0.restoreStyle(a, page, oldFont, oldColor, oldBounds) }
+        doc.updateChangeCount(.changeDone)
+    }
+    private func restoreStyle(_ a: PDFAnnotation, _ page: PDFPage, _ font: NSFont?, _ color: NSColor?, _ bounds: NSRect) {
+        let cf = a.font, cc = a.fontColor, cb = a.bounds
+        a.font = font; a.fontColor = color; a.bounds = bounds
+        pdfView.annotationsChanged(on: page); pdfView.refreshOverlay(); updateFormatBar()
+        doc.undoManager?.registerUndo(withTarget: self) { $0.restoreStyle(a, page, cf, cc, cb) }
+    }
+
+    /// Double-clic sur une zone gommée : une petite carte propose d'y écrire du texte ou d'y placer une image.
+    private var choiceCard: NSVisualEffectView?
+    private weak var choiceAnnot: PDFAnnotation?
+
+    private func hideChoiceCard() { choiceCard?.removeFromSuperview(); choiceCard = nil; choiceAnnot = nil }
+
+    private func whiteoutMenu(_ a: PDFAnnotation, _ page: PDFPage, at vp: NSPoint) {
+        hideChoiceCard()
+        guard let root = pdfView.superview else { return }
+        let card = NSVisualEffectView(); card.material = .hudWindow; card.blendingMode = .withinWindow; card.state = .active
+        card.wantsLayer = true; card.layer?.cornerRadius = 10; card.layer?.masksToBounds = true
+        let bText = BarButton(symbol: "textformat", label: L.t("wo.textShort"), tip: L.t("wo.text"), target: nil, action: #selector(NSObject.description))
+        let bImage = BarButton(symbol: "photo", label: L.t("tb.image"), tip: L.t("wo.image"), target: nil, action: #selector(NSObject.description))
+        let bTrash = BarButton(symbol: "trash", tip: L.t("wo.delete"), target: nil, action: #selector(NSObject.description))
+        let actions = [MenuAction { [weak self] in
+                self?.hideChoiceCard(); self?.pdfView.beginText(in: a.bounds, on: page) },
+            MenuAction { [weak self] in
+                self?.hideChoiceCard()
+                guard let self, let window = self.window else { return }
+                let panel = NSOpenPanel(); panel.allowedContentTypes = [.image]; panel.allowsMultipleSelection = false
+                panel.beginSheetModal(for: window) { r in
+                    guard r == .OK, let u = panel.url, let img = NSImage(contentsOf: u) else { return }
+                    self.pdfView.placeImage(img, on: page, fitting: a.bounds)
+                } },
+            MenuAction { [weak self] in self?.hideChoiceCard(); self?.removeAnnotation(a, from: page) }]
+        for (b, act) in zip([bText, bImage, bTrash], actions) { b.target = act; b.action = #selector(MenuAction.run) }
+        let row = NSStackView(views: [bText, bImage, bTrash]); row.spacing = 4
+        row.edgeInsets = NSEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
+        row.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(row)
+        NSLayoutConstraint.activate([row.leadingAnchor.constraint(equalTo: card.leadingAnchor), row.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+                                     row.topAnchor.constraint(equalTo: card.topAnchor), row.bottomAnchor.constraint(equalTo: card.bottomAnchor)])
+        card.layoutSubtreeIfNeeded()
+        let size = card.fittingSize
+        let r = pdfView.convert(a.bounds, from: page)
+        var y = r.minY - size.height - 8
+        if y < 8 { y = min(r.maxY + 8, root.bounds.height - size.height - 8) }
+        let x = max(8, min(r.midX - size.width / 2, root.bounds.width - size.width - 8))
+        card.frame = NSRect(x: x, y: y, width: size.width, height: size.height)
+        card.translatesAutoresizingMaskIntoConstraints = true
+        root.addSubview(card)
+        objc_setAssociatedObject(card, Unmanaged.passUnretained(card).toOpaque(), actions, .OBJC_ASSOCIATION_RETAIN)
+        choiceCard = card; choiceAnnot = a
+    }
+
     /// Tous les autres outils (soulignement, barré, note, formes, gomme blanche, croix).
     @objc private func showToolsMenu(_ b: BarButton) {
         let menu = NSMenu()

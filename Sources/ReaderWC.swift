@@ -68,13 +68,13 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     private var rows: [NoteRow] = []
     private var matches: [PDFSelection] = []
     private var matchIndex = 0
-    private let searchField = SearchField(placeholder: L.t("tb.search"))
+    private let searchField: NSSearchField = { let f = NSSearchField(); f.placeholderString = L.t("tb.search"); f.translatesAutoresizingMaskIntoConstraints = false; f.sendsSearchStringImmediately = false; return f }()
     private var toolButtons: [BarButton] = []
-    private var thumbsTab: BarButton!, outlineTab: BarButton!
+    private let sideTabs = NSSegmentedControl(labels: [L.t("side.thumbs"), L.t("side.outline")], trackingMode: .selectOne, target: nil, action: nil)
     private var pagesBtn: BarButton!, notesBtn: BarButton!, displayBtn: BarButton!
     private var barRow: NSStackView!
     private var imageBtn: BarButton!, moreBtn: BarButton!
-    static let directTools: [Tool] = [.select, .hand, .text, .whiteout, .check, .highlight, .pen]
+    static let directTools: [Tool] = [.select, .text, .whiteout, .check, .highlight, .pen]
     private var bar: NSVisualEffectView!, barLine: FlatView!
     private let hud = PageHUD()
     private let formatBar = FormatBar()
@@ -87,7 +87,7 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     private var observers: [NSObjectProtocol] = []
     nonisolated static let sideKey = "pagesPanelRight"
     static var panelOnRight: Bool { get { UserDefaults.standard.bool(forKey: sideKey) } set { UserDefaults.standard.set(newValue, forKey: sideKey) } }
-    private let barH = Socle.M.sizeBar
+    private let barH: CGFloat = 52   // hauteur d'une barre d'outils macOS unifiée
 
     init(doc: PDFDoc) {
         self.doc = doc
@@ -171,10 +171,9 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         pages.onMove = { [weak self] from, to in self?.movePage(from: from, to: to) }
         pages.onAction = { [weak self] a, row in self?.pageAction(a, row: row) }
         pages.onDelete = { [weak self] i in if let p = self?.pdfView.document?.page(at: i) { self?.removePages([p]) } }
-        thumbsTab = BarButton(title: L.t("side.thumbs"), target: self, action: #selector(sideChanged(_:)))
-        outlineTab = BarButton(title: L.t("side.outline"), target: self, action: #selector(sideChanged(_:)))
-        thumbsTab.selectedState = true
-        let tabs = NSStackView(views: [thumbsTab, outlineTab]); tabs.spacing = 2; tabs.distribution = .fillEqually
+        sideTabs.target = self; sideTabs.action = #selector(sideChanged(_:)); sideTabs.selectedSegment = 0
+        sideTabs.segmentDistribution = .fillEqually
+        let tabs = sideTabs
         tabs.translatesAutoresizingMaskIntoConstraints = false
         let sideView = pagesDrawer.view
         sideLines = [FlatView.hairline(vertical: true), FlatView.hairline(vertical: true)]
@@ -281,49 +280,48 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         let bar = NSVisualEffectView()
         bar.material = .headerView; bar.blendingMode = .withinWindow; bar.state = .active
         bar.translatesAutoresizingMaskIntoConstraints = false
-        func group(_ b: [BarButton]) -> NSStackView { let g = NSStackView(views: b); g.spacing = 2; g.translatesAutoresizingMaskIntoConstraints = false; return g }
-        pagesBtn = BarButton(symbol: "sidebar.left", tip: L.t("menu.sidebar"), target: self, action: #selector(toggleSidebar))
-        func toolBtn(_ t: Tool, label: String? = nil) -> BarButton {
-            let b = label.map { BarButton(symbol: t.symbol, label: $0, tip: L.t(t.key), target: self, action: #selector(toolClicked(_:))) }
-                ?? BarButton(symbol: t.symbol, tip: L.t(t.key), target: self, action: #selector(toolClicked(_:)))
+        func group(_ b: [NSView]) -> NSStackView { let g = NSStackView(views: b); g.spacing = 2; g.translatesAutoresizingMaskIntoConstraints = false; return g }
+        func toolBtn(_ t: Tool, _ label: String) -> BarButton {
+            let b = BarButton(symbol: t.symbol, label: label, tip: L.t(t.key), target: self, action: #selector(toolClicked(_:)))
             b.tag = t.rawValue; return b
         }
-        // Naviguer / choisir
-        let bSelect = toolBtn(.select), bHand = toolBtn(.hand)
-        // Modifier le document : outils nommés, faciles à trouver
-        let bText = toolBtn(.text, label: L.t("tb.text")), bEraser = toolBtn(.whiteout, label: L.t("tb.eraser"))
+        pagesBtn = BarButton(symbol: "sidebar.left", label: L.t("tb.pages"), tip: L.t("menu.sidebar"), target: self, action: #selector(toggleSidebar))
+        notesBtn = BarButton(symbol: "sidebar.right", label: L.t("tb.notes"), tip: L.t("menu.notesPanel"), target: self, action: #selector(toggleNotes))
+        let bSelect = toolBtn(.select, L.t("tb.select"))
+        let bText = toolBtn(.text, L.t("tb.text")), bEraser = toolBtn(.whiteout, L.t("tb.eraser"))
         imageBtn = BarButton(symbol: "photo", label: L.t("tb.image"), tip: L.t("menu.insertImage"), target: self, action: #selector(insertImage(_:)))
-        // Annoter
-        let bCheck = toolBtn(.check), bHigh = toolBtn(.highlight), bPen = toolBtn(.pen)
-        toolButtons = [bSelect, bHand, bText, bEraser, bCheck, bHigh, bPen]
+        let bCheck = toolBtn(.check, L.t("tb.check")), bHigh = toolBtn(.highlight, L.t("tb.highlight")), bPen = toolBtn(.pen, L.t("tb.pen"))
+        toolButtons = [bSelect, bText, bEraser, bCheck, bHigh, bPen]
         bSelect.selectedState = true
-        moreBtn = BarButton(symbol: "ellipsis", tip: L.t("tb.more"), target: self, action: #selector(showToolsMenu(_:)))
-        displayBtn = BarButton(symbol: "magnifyingglass.circle", tip: L.t("tb.display"), target: self, action: #selector(showDisplayMenu(_:)))
-        notesBtn = BarButton(symbol: "sidebar.right", tip: L.t("menu.notesPanel"), target: self, action: #selector(toggleNotes))
+        moreBtn = BarButton(symbol: "ellipsis.circle", label: L.t("tb.shapes"), tip: L.t("tb.more"), target: self, action: #selector(showToolsMenu(_:)))
+        displayBtn = BarButton(symbol: "magnifyingglass.circle", label: L.t("tb.display"), tip: L.t("tb.display"), target: self, action: #selector(showDisplayMenu(_:)))
 
         searchField.target = self; searchField.action = #selector(search(_:))
-        searchField.widthAnchor.constraint(equalToConstant: 120).isActive = true
-        let nav = group([bSelect, bHand]), edit = group([bText, bEraser, imageBtn]), annotate = group([bCheck, bHigh, bPen, moreBtn])
+        searchField.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        let nav = group([bSelect]), edit = group([bText, bEraser, imageBtn]), annotate = group([bCheck, bHigh, bPen, moreBtn])
+        let d1 = ToolbarDivider(), d2 = ToolbarDivider(), d3 = ToolbarDivider()
 
-        let row = NSStackView(views: [pagesBtn, nav, edit, annotate, NSView(), displayBtn, searchField, notesBtn])
-        row.spacing = 10
+        let row = NSStackView(views: [pagesBtn, d1, nav, d2, edit, d3, annotate, NSView(), displayBtn, searchField, notesBtn])
+        row.spacing = 8
+        row.alignment = .centerY
         row.detachesHiddenViews = true
         // Quand la fenêtre est étroite, les éléments se retirent d'eux-mêmes, du moins important au plus important.
-        for (v, pr) in [(pagesBtn!, 1000), (notesBtn!, 1000), (edit, 950), (nav, 900), (annotate, 850), (displayBtn!, 700), (searchField, 600)] as [(NSView, Float)] {
+        for (v, pr) in [(pagesBtn!, 1000), (notesBtn!, 1000), (edit, 950), (searchField, 900), (nav, 800), (annotate, 700), (displayBtn!, 600),
+                        (d1, 800), (d2, 800), (d3, 700)] as [(NSView, Float)] {
             row.setVisibilityPriority(NSStackView.VisibilityPriority(rawValue: pr), for: v)
         }
-        let flex = row.arrangedSubviews[4]; flex.setContentHuggingPriority(.init(1), for: .horizontal); flex.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        let flex = row.arrangedSubviews[7]; flex.setContentHuggingPriority(.init(1), for: .horizontal); flex.setContentCompressionResistancePriority(.init(1), for: .horizontal)
         row.setVisibilityPriority(NSStackView.VisibilityPriority(rawValue: 100), for: flex)
         row.setClippingResistancePriority(.init(250), for: .horizontal)   // peut être plus étroite que son contenu : les éléments se retirent
         barRow = row
         row.translatesAutoresizingMaskIntoConstraints = false
         bar.addSubview(row)
         NSLayoutConstraint.activate([
-            row.leadingAnchor.constraint(equalTo: bar.leadingAnchor, constant: 84),
-            row.trailingAnchor.constraint(lessThanOrEqualTo: bar.trailingAnchor, constant: -Socle.M.space3),   // la barre ne force jamais la largeur de la fenêtre
+            row.leadingAnchor.constraint(equalTo: bar.leadingAnchor, constant: 80),
+            row.trailingAnchor.constraint(lessThanOrEqualTo: bar.trailingAnchor, constant: -12),   // la barre ne force jamais la largeur de la fenêtre
             row.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
         ])
-        let fill = row.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -Socle.M.space3)
+        let fill = row.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -12)
         fill.priority = .init(750); fill.isActive = true
         return bar
     }
@@ -402,9 +400,8 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     }
 
     @objc private func toolClicked(_ b: BarButton) { setTool(Tool(rawValue: b.tag) ?? .select) }
-    @objc private func sideChanged(_ b: BarButton) {
-        let thumbsOn = b === thumbsTab
-        thumbsTab.selectedState = thumbsOn; outlineTab.selectedState = !thumbsOn
+    @objc private func sideChanged(_ b: Any?) {
+        let thumbsOn = sideTabs.selectedSegment == 0
         pages.scroll.isHidden = !thumbsOn
         outlineScroll.isHidden = thumbsOn || pdfView.document?.outlineRoot == nil
         emptyOutline.isHidden = thumbsOn || pdfView.document?.outlineRoot != nil
@@ -863,7 +860,7 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         guard let w = window else { return }
         for t in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             guard let b = w.standardWindowButton(t), let sv = b.superview else { continue }
-            b.setFrameOrigin(NSPoint(x: b.frame.origin.x, y: sv.bounds.height - Socle.M.sizeBar / 2 - b.frame.height / 2 - (sv.bounds.height - 28)))
+            b.setFrameOrigin(NSPoint(x: b.frame.origin.x, y: sv.bounds.height - barH / 2 - b.frame.height / 2 - (sv.bounds.height - 28)))
         }
     }
     func windowDidEndLiveResize(_ n: Notification) { alignTrafficLights() }

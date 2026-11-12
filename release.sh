@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Barre d'outils repensée : Texte, Gomme et Image en libellés. Choix de la police, de la taille, du style et de la couleur. Double-clic sur une zone gommée : écrire du texte ou placer une image.
+- Nouvelle barre d'outils au style macOS : icônes avec libellés, survol et sélection discrets, recherche native, onglets natifs.
 <!-- notes:en -->
 ## $VERSION
-- Redesigned toolbar: Text, Eraser and Image are labelled. Choose font, size, style and colour. Double-click an erased area to write text or place an image.
+- New macOS-style toolbar: icons with labels, subtle hover and selection, native search field and tabs.
 <!-- notes:es -->
 ## $VERSION
-- Barra de herramientas rediseñada: Texto, Borrador e Imagen con etiquetas. Elección de fuente, tamaño, estilo y color. Doble clic en una zona borrada: escribir texto o colocar una imagen.
+- Nueva barra de herramientas al estilo macOS: iconos con etiquetas, resaltado discreto, búsqueda y pestañas nativas.
 <!-- notes:it -->
 ## $VERSION
-- Barra degli strumenti ridisegnata: Testo, Gomma e Immagine con etichette. Scelta di carattere, dimensione, stile e colore. Doppio clic su un'area cancellata: scrivere testo o inserire un'immagine.
+- Nuova barra degli strumenti in stile macOS: icone con etichette, evidenziazione discreta, ricerca e schede native.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

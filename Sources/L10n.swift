@@ -24,7 +24,7 @@ enum L {
         "menu.fullScreen": "Plein écran", "menu.presentation": "Présentation plein écran", "menu.tools": "Outils", "menu.window": "Fenêtre", "menu.minimize": "Placer dans le Dock", "menu.zoom": "Agrandir la fenêtre", "menu.bringAll": "Tout ramener au premier plan",
         "menu.checkUpdates": "Rechercher les mises à jour…",
         "tool.hand": "Main (déplacer)", "tool.highlight": "Surligner", "tool.underline": "Souligner", "tool.strike": "Barrer", "tool.note": "Note", "tool.text": "Zone de texte",
-        "tb.sidebar": "Barre latérale", "tb.notes": "Notes", "tb.search": "Rechercher", "tb.nav": "Pages", "tb.zoom": "Zoom", "tb.tools": "Outils", "tb.display": "Affichage",
+        "tb.sidebar": "Barre latérale", "tb.search": "Rechercher", "tb.nav": "Pages", "tb.zoom": "Zoom", "tb.tools": "Outils", "tb.display": "Affichage",
         "side.thumbs": "Pages", "side.outline": "Sommaire", "side.empty": "Pas de sommaire dans ce document.",
         "notes.title": "Notes", "notes.empty": "Aucune note. Surlignez du texte ou ajoutez une note.", "notes.delete": "Supprimer", "notes.edit": "Modifier le texte…",
         "note.prompt": "Texte de la note", "note.ok": "OK", "note.cancel": "Annuler", "note.page": "p. %d",
@@ -38,6 +38,7 @@ enum L {
         "menu.settings": "Réglages…", "settings.title": "Réglages", "settings.auto": "Installer automatiquement les mises à jour", "settings.check": "Rechercher les mises à jour",
         "tb.text": "Texte", "tb.eraser": "Gomme", "tb.image": "Image", "fmt.font": "Police", "fmt.size": "Taille", "fmt.bold": "Gras", "fmt.italic": "Italique", "wo.text": "Écrire du texte ici", "wo.image": "Placer une image ici…", "wo.delete": "Supprimer la gomme", "tool.whiteout": "Gomme (masquer, puis écrire par-dessus : double-clic)",
         "wo.textShort": "Écrire",
+        "tb.pages": "Pages", "tb.select": "Sélection", "tb.hand": "Main", "tb.check": "Coche", "tb.highlight": "Surligner", "tb.pen": "Stylo", "tb.shapes": "Formes", "tb.notes": "Notes",
     ]
 
     private static let en: [String: String] = [
@@ -50,7 +51,7 @@ enum L {
         "menu.fullScreen": "Full Screen", "menu.presentation": "Presentation Mode", "menu.tools": "Tools", "menu.window": "Window", "menu.minimize": "Minimize", "menu.zoom": "Zoom", "menu.bringAll": "Bring All to Front",
         "menu.checkUpdates": "Check for Updates…",
         "tool.hand": "Hand (move)", "tool.highlight": "Highlight", "tool.underline": "Underline", "tool.strike": "Strike Through", "tool.note": "Note", "tool.text": "Text Box",
-        "tb.sidebar": "Sidebar", "tb.notes": "Notes", "tb.search": "Search", "tb.nav": "Pages", "tb.zoom": "Zoom", "tb.tools": "Tools", "tb.display": "Display",
+        "tb.sidebar": "Sidebar", "tb.search": "Search", "tb.nav": "Pages", "tb.zoom": "Zoom", "tb.tools": "Tools", "tb.display": "Display",
         "side.thumbs": "Pages", "side.outline": "Outline", "side.empty": "This document has no outline.",
         "notes.title": "Notes", "notes.empty": "No notes. Highlight text or add a note.", "notes.delete": "Delete", "notes.edit": "Edit Text…",
         "note.prompt": "Note text", "note.ok": "OK", "note.cancel": "Cancel", "note.page": "p. %d",
@@ -64,6 +65,7 @@ enum L {
         "menu.settings": "Settings…", "settings.title": "Settings", "settings.auto": "Install updates automatically", "settings.check": "Check for Updates",
         "tb.text": "Text", "tb.eraser": "Eraser", "tb.image": "Image", "fmt.font": "Font", "fmt.size": "Size", "fmt.bold": "Bold", "fmt.italic": "Italic", "wo.text": "Write text here", "wo.image": "Place an image here…", "wo.delete": "Delete eraser", "tool.whiteout": "Eraser (hide, then write over it: double-click)",
         "wo.textShort": "Write",
+        "tb.pages": "Pages", "tb.select": "Select", "tb.hand": "Hand", "tb.check": "Check", "tb.highlight": "Highlight", "tb.pen": "Pen", "tb.shapes": "Shapes", "tb.notes": "Notes",
     ]
 
     private static let es: [String: String] = [
@@ -76,7 +78,7 @@ enum L {
         "menu.fullScreen": "Pantalla completa", "menu.presentation": "Presentación a pantalla completa", "menu.tools": "Herramientas", "menu.window": "Ventana", "menu.minimize": "Minimizar", "menu.zoom": "Zoom", "menu.bringAll": "Traer todo al frente",
         "menu.checkUpdates": "Buscar actualizaciones…",
         "tool.hand": "Mano (mover)", "tool.highlight": "Resaltar", "tool.underline": "Subrayar", "tool.strike": "Tachar", "tool.note": "Nota", "tool.text": "Cuadro de texto",
-        "tb.sidebar": "Barra lateral", "tb.notes": "Notas", "tb.search": "Buscar", "tb.nav": "Páginas", "tb.zoom": "Zoom", "tb.tools": "Herramientas", "tb.display": "Visualización",
+        "tb.sidebar": "Barra lateral", "tb.search": "Buscar", "tb.nav": "Páginas", "tb.zoom": "Zoom", "tb.tools": "Herramientas", "tb.display": "Visualización",
         "side.thumbs": "Páginas", "side.outline": "Índice", "side.empty": "Este documento no tiene índice.",
         "notes.title": "Notas", "notes.empty": "Sin notas. Resalte texto o añada una nota.", "notes.delete": "Eliminar", "notes.edit": "Editar texto…",
         "note.prompt": "Texto de la nota", "note.ok": "Aceptar", "note.cancel": "Cancelar", "note.page": "p. %d",
@@ -90,6 +92,7 @@ enum L {
         "menu.settings": "Ajustes…", "settings.title": "Ajustes", "settings.auto": "Instalar las actualizaciones automáticamente", "settings.check": "Buscar actualizaciones",
         "tb.text": "Texto", "tb.eraser": "Borrador", "tb.image": "Imagen", "fmt.font": "Fuente", "fmt.size": "Tamaño", "fmt.bold": "Negrita", "fmt.italic": "Cursiva", "wo.text": "Escribir texto aquí", "wo.image": "Colocar una imagen aquí…", "wo.delete": "Eliminar borrador", "tool.whiteout": "Borrador (ocultar y escribir encima: doble clic)",
         "wo.textShort": "Escribir",
+        "tb.pages": "Páginas", "tb.select": "Selección", "tb.hand": "Mano", "tb.check": "Marca", "tb.highlight": "Resaltar", "tb.pen": "Lápiz", "tb.shapes": "Formas", "tb.notes": "Notas",
     ]
 
     private static let it: [String: String] = [
@@ -102,7 +105,7 @@ enum L {
         "menu.fullScreen": "Schermo intero", "menu.presentation": "Presentazione a schermo intero", "menu.tools": "Strumenti", "menu.window": "Finestra", "menu.minimize": "Riduci a icona", "menu.zoom": "Zoom", "menu.bringAll": "Porta tutto in primo piano",
         "menu.checkUpdates": "Verifica aggiornamenti…",
         "tool.hand": "Mano (sposta)", "tool.highlight": "Evidenzia", "tool.underline": "Sottolinea", "tool.strike": "Barra", "tool.note": "Nota", "tool.text": "Casella di testo",
-        "tb.sidebar": "Barra laterale", "tb.notes": "Note", "tb.search": "Cerca", "tb.nav": "Pagine", "tb.zoom": "Zoom", "tb.tools": "Strumenti", "tb.display": "Vista",
+        "tb.sidebar": "Barra laterale", "tb.search": "Cerca", "tb.nav": "Pagine", "tb.zoom": "Zoom", "tb.tools": "Strumenti", "tb.display": "Vista",
         "side.thumbs": "Pagine", "side.outline": "Indice", "side.empty": "Questo documento non ha un indice.",
         "notes.title": "Note", "notes.empty": "Nessuna nota. Evidenzia del testo o aggiungi una nota.", "notes.delete": "Elimina", "notes.edit": "Modifica testo…",
         "note.prompt": "Testo della nota", "note.ok": "OK", "note.cancel": "Annulla", "note.page": "p. %d",
@@ -116,5 +119,6 @@ enum L {
         "menu.settings": "Impostazioni…", "settings.title": "Impostazioni", "settings.auto": "Installa automaticamente gli aggiornamenti", "settings.check": "Verifica aggiornamenti",
         "tb.text": "Testo", "tb.eraser": "Gomma", "tb.image": "Immagine", "fmt.font": "Carattere", "fmt.size": "Dimensione", "fmt.bold": "Grassetto", "fmt.italic": "Corsivo", "wo.text": "Scrivi testo qui", "wo.image": "Inserisci un'immagine qui…", "wo.delete": "Elimina gomma", "tool.whiteout": "Gomma (nascondi e scrivi sopra: doppio clic)",
         "wo.textShort": "Scrivi",
+        "tb.pages": "Pagine", "tb.select": "Selezione", "tb.hand": "Mano", "tb.check": "Spunta", "tb.highlight": "Evidenzia", "tb.pen": "Penna", "tb.shapes": "Forme", "tb.notes": "Note",
     ]
 }

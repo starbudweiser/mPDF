@@ -43,54 +43,55 @@ final class FlatView: NSView {
     }
 }
 
-/// Bouton plat Socle : aplat `control`, sans contour ; sélectionné = aplat `accent-fill`. Icône SF Symbol ou libellé.
+/// Bouton de barre d'outils « à la Apple » : sans fond au repos, un cartouche discret au survol, la sélection en teinte d'accent ;
+/// icône SF Symbol seule, ou icône avec son libellé dessous (comme les barres de Pages ou d'Aperçu).
 final class BarButton: NSButton {
     var selectedState = false { didSet { refresh() } }
     private var hover = false { didSet { refresh() } }
-    private let label: String?
-    private let kind: Kind
-    private enum Kind { case icon, tab, iconLabel }
+    private let stacked: Bool
 
     init(symbol: String, tip: String, target: AnyObject?, action: Selector) {
-        label = nil; kind = .icon
+        stacked = false
         super.init(frame: .zero)
-        image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular))
-        toolTip = tip
+        image = Self.symbol(symbol, tip, 16)
         common(tip, target, action)
-        widthAnchor.constraint(equalToConstant: Socle.M.sizeControl).isActive = true
+        widthAnchor.constraint(equalToConstant: 34).isActive = true
+        heightAnchor.constraint(equalToConstant: 34).isActive = true
     }
-    /// Icône + libellé : pour les outils de modification que l'on doit trouver du premier coup.
+    /// Icône au-dessus, libellé dessous.
     init(symbol: String, label: String, tip: String, target: AnyObject?, action: Selector) {
-        self.label = label; kind = .iconLabel
+        stacked = true
         super.init(frame: .zero)
-        image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular))
-        toolTip = tip
+        image = Self.symbol(symbol, tip, 18)
+        let p = NSMutableParagraphStyle(); p.alignment = .center
+        attrs = [.font: NSFont.systemFont(ofSize: 10, weight: .medium), .paragraphStyle: p]
+        labelText = label
         common(tip, target, action)
-        let w = ceil(NSAttributedString(string: label, attributes: [.font: S.font(12, .semibold)]).size().width) + 16 + 6 + 14
-        widthAnchor.constraint(equalToConstant: w).isActive = true
-    }
-    init(title: String, target: AnyObject?, action: Selector) {
-        label = title; kind = .tab
-        super.init(frame: .zero)
-        common(title, target, action)
-        widthAnchor.constraint(greaterThanOrEqualToConstant: 72).isActive = true
+        let w = ceil(NSAttributedString(string: label, attributes: attrs).size().width) + 12
+        widthAnchor.constraint(equalToConstant: max(w, 38)).isActive = true
+        heightAnchor.constraint(equalToConstant: 44).isActive = true
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    private var attrs: [NSAttributedString.Key: Any] = [:]
+    private var labelText = ""
+
+    private static func symbol(_ name: String, _ tip: String, _ size: CGFloat) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: size, weight: .regular))
+    }
     private func common(_ name: String, _ target: AnyObject?, _ action: Selector) {
+        toolTip = name
         self.target = target; self.action = action
-        imagePosition = kind == .icon ? .imageOnly : (kind == .tab ? .noImage : .imageLeading)
-        imageHugsTitle = true
+        imagePosition = stacked ? .imageAbove : .imageOnly
         isBordered = false; bezelStyle = .regularSquare; imageScaling = .scaleNone; focusRingType = .exterior
         setButtonType(.momentaryChange)
-        wantsLayer = true; layer?.cornerRadius = Socle.M.radius
+        wantsLayer = true; layer?.cornerRadius = 8
         translatesAutoresizingMaskIntoConstraints = false
-        heightAnchor.constraint(equalToConstant: kind == .tab ? 28 : Socle.M.sizeControl).isActive = true
         setAccessibilityLabel(name)
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
         refresh()
     }
-    func setSymbol(_ name: String) { image = NSImage(systemSymbolName: name, accessibilityDescription: toolTip)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular)) }
+    func setSymbol(_ name: String) { image = Self.symbol(name, toolTip ?? "", stacked ? 18 : 16) }
     override func mouseEntered(with e: NSEvent) { hover = true }
     override func mouseExited(with e: NSEvent) { hover = false }
     override var isHighlighted: Bool { didSet { refresh() } }
@@ -98,20 +99,32 @@ final class BarButton: NSButton {
     override func viewDidChangeEffectiveAppearance() { refresh() }
 
     func refresh() {
-        let bg: NSColor = selectedState ? (hover ? S.accentFillHover : S.accentFill) : (isHighlighted ? S.controlPressed : (hover ? S.controlHover : S.control))
-        let fg: NSColor = selectedState ? S.onAccentFill : S.text
-        effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = bg.cgColor }
-        contentTintColor = fg
-        if let label, kind == .iconLabel {
-            let p = NSMutableParagraphStyle(); p.alignment = .center
-            attributedTitle = NSAttributedString(string: label, attributes: [.font: S.font(12, .semibold), .foregroundColor: fg, .paragraphStyle: p])
-        } else if let label {
-            let p = NSMutableParagraphStyle(); p.alignment = .center
-            attributedTitle = NSAttributedString(string: label, attributes: [.font: S.font(12, selectedState ? .semibold : .regular), .foregroundColor: selectedState ? S.textStrong : S.textMuted, .paragraphStyle: p])
-            effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = (selectedState ? S.control : (hover ? S.controlHover.withAlphaComponent(0.5) : S.bgSunken)).cgColor }
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            let bg: NSColor = selectedState ? NSColor.controlAccentColor.withAlphaComponent(0.20)
+                : (isHighlighted ? NSColor.labelColor.withAlphaComponent(0.16) : (hover ? NSColor.labelColor.withAlphaComponent(0.08) : .clear))
+            layer?.backgroundColor = bg.cgColor
+            let fg: NSColor = selectedState ? .controlAccentColor : NSColor.labelColor.withAlphaComponent(0.86)
+            contentTintColor = fg
+            if stacked {
+                var a = attrs; a[.foregroundColor] = selectedState ? NSColor.controlAccentColor : NSColor.secondaryLabelColor
+                attributedTitle = NSAttributedString(string: labelText, attributes: a)
+            }
         }
-        alphaValue = isEnabled ? 1 : Socle.M.opacityDisabled
+        alphaValue = isEnabled ? 1 : 0.4
     }
+}
+
+/// Filet vertical entre deux groupes d'outils.
+final class ToolbarDivider: NSView {
+    init() {
+        super.init(frame: .zero)
+        wantsLayer = true; translatesAutoresizingMaskIntoConstraints = false
+        widthAnchor.constraint(equalToConstant: 1).isActive = true; heightAnchor.constraint(equalToConstant: 26).isActive = true
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override var wantsUpdateLayer: Bool { true }
+    override func updateLayer() { effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = NSColor.separatorColor.cgColor } }
+    override func viewDidChangeEffectiveAppearance() { needsDisplay = true }
 }
 
 /// Zone de saisie Socle : angles droits, fond `bg-sunken`, marge intérieure `space-3`, pas de contour (sauf focus).

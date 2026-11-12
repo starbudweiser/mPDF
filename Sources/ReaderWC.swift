@@ -130,6 +130,7 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     private func setup() {
         guard let window else { return }
         // PDF : pleine fenêtre, une page ajustée, sans marge entre page et bord
+        Self.vectorizeFreeText(doc.pdf)
         pdfView.document = doc.pdf
         pdfView.autoScales = true
         pdfView.displayMode = .singlePage
@@ -579,6 +580,21 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
     }
 
     /// À l'enregistrement, les images posées sont figées dans la page (contenu vectoriel conservé, texte sélectionnable).
+    /// Les textes libres déjà présents dans le fichier sont repris en TextAnnotation : dessinés en vectoriel, donc nets.
+    static func vectorizeFreeText(_ d: PDFDocument?) {
+        guard let d else { return }
+        for i in 0..<d.pageCount {
+            guard let page = d.page(at: i) else { continue }
+            for a in page.annotations where a.type == "FreeText" && !(a is TextAnnotation) {
+                let n = TextAnnotation(bounds: a.bounds, forType: .freeText, withProperties: nil)
+                n.contents = a.contents; n.font = a.font; n.fontColor = a.fontColor
+                n.color = a.color; n.alignment = a.alignment; n.border = a.border
+                n.userName = a.userName; n.shouldPrint = a.shouldPrint
+                page.removeAnnotation(a); page.addAnnotation(n)
+            }
+        }
+    }
+
     func flattenImages() {
         guard let d = pdfView.document else { return }
         pdfView.commitEditing()

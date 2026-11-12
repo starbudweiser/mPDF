@@ -29,6 +29,47 @@ final class ImageAnnotation: PDFAnnotation {
     }
 }
 
+/// Texte libre dessiné en vectoriel par la vue (PDFKit le met sinon en cache dans une image à basse résolution, d'où un texte flou).
+/// À l'enregistrement, PDFKit écrit une annotation FreeText standard : le texte reste modifiable dans les autres lecteurs.
+final class TextAnnotation: PDFAnnotation {
+    override func draw(with box: PDFDisplayBox, in context: CGContext) {
+        context.saveGState()
+        if color.alphaComponent > 0 { context.setFillColor(color.cgColor); context.fill(bounds) }
+        if let text = contents, !text.isEmpty {
+            let para = NSMutableParagraphStyle(); para.alignment = alignment
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: font ?? NSFont.systemFont(ofSize: 16),
+                .foregroundColor: fontColor ?? NSColor.black,
+                .paragraphStyle: para]
+            // Contours de glyphes remplis : indépendants du lissage de police et de la résolution du cache de la vue.
+            let setter = CTFramesetterCreateWithAttributedString(NSAttributedString(string: text, attributes: attrs))
+            let box = bounds.insetBy(dx: 7, dy: 2)
+            let frame = CTFramesetterCreateFrame(setter, CFRange(location: 0, length: 0), CGPath(rect: box, transform: nil), nil)
+            let lines = CTFrameGetLines(frame) as! [CTLine]
+            var origins = [CGPoint](repeating: .zero, count: lines.count)
+            CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+            context.setFillColor((fontColor ?? NSColor.black).cgColor)
+            for (li, line) in lines.enumerated() {
+                for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+                    let n = CTRunGetGlyphCount(run); if n == 0 { continue }
+                    let runAttrs = CTRunGetAttributes(run) as NSDictionary
+                    let f = runAttrs[kCTFontAttributeName as String] as! CTFont
+                    var glyphs = [CGGlyph](repeating: 0, count: n), pos = [CGPoint](repeating: .zero, count: n)
+                    CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &glyphs)
+                    CTRunGetPositions(run, CFRange(location: 0, length: 0), &pos)
+                    for g in 0..<n {
+                        guard let path = CTFontCreatePathForGlyph(f, glyphs[g], nil) else { continue }
+                        var t = CGAffineTransform(translationX: box.minX + origins[li].x + pos[g].x, y: box.minY + origins[li].y + pos[g].y)
+                        if let moved = path.copy(using: &t) { context.addPath(moved) }
+                    }
+                }
+            }
+            context.fillPath()
+        }
+        context.restoreGState()
+    }
+}
+
 /// Calque transparent au-dessus du PDF : poignées de la sélection et aperçu du geste en cours (ne capte aucun clic).
 private final class OverlayView: NSView {
     var selectionRect: NSRect?
@@ -318,7 +359,7 @@ final class ReaderPDFView: PDFView {
         let pt = convert(e.locationInWindow, from: nil)
         guard let page = page(for: pt, nearest: true) else { return }
         let p = convert(pt, to: page)
-        let a = PDFAnnotation(bounds: NSRect(x: p.x, y: p.y - 30, width: 240, height: 30), forType: .freeText, withProperties: nil)
+        let a = TextAnnotation(bounds: NSRect(x: p.x, y: p.y - 30, width: 240, height: 30), forType: .freeText, withProperties: nil)
         a.font = textStyle.font
         a.fontColor = textStyle.color
         a.color = .clear
@@ -330,7 +371,7 @@ final class ReaderPDFView: PDFView {
     /// Texte dans une zone donnée (zone gommée) : saisie en place, style courant.
     func beginText(in rect: NSRect, on page: PDFPage) {
         let r = rect.insetBy(dx: 4, dy: 4)
-        let a = PDFAnnotation(bounds: r, forType: .freeText, withProperties: nil)
+        let a = TextAnnotation(bounds: r, forType: .freeText, withProperties: nil)
         a.font = textStyle.font
         a.fontColor = textStyle.color
         a.color = .clear
@@ -453,7 +494,7 @@ final class ReaderPDFView: PDFView {
         let pt = convert(e.locationInWindow, from: nil)
         guard let page = page(for: pt, nearest: true) else { return }
         let p = convert(pt, to: page)
-        let a = PDFAnnotation(bounds: NSRect(x: p.x - 16, y: p.y - 18, width: 32, height: 36), forType: .freeText, withProperties: nil)
+        let a = TextAnnotation(bounds: NSRect(x: p.x - 16, y: p.y - 18, width: 32, height: 36), forType: .freeText, withProperties: nil)
         a.font = NSFont.systemFont(ofSize: 28, weight: .bold)
         a.fontColor = tool == .check ? NSColor(srgbRed: 0.1, green: 0.55, blue: 0.25, alpha: 1) : NSColor(srgbRed: 0.8, green: 0.15, blue: 0.15, alpha: 1)
         a.alignment = .center

@@ -267,7 +267,7 @@ final class ReaderWC: NSWindowController, NSWindowDelegate, NSTableViewDataSourc
         observers.append(nc2.addObserver(forName: .mpdfPanelSide, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.applySide() } })
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] e in
-            MainActor.assumeIsolated { self?.handleMouseMoved(e) }
+            MainActor.assumeIsolated { self?.handleMouseMoved(e); if e.window === self?.window { self?.pdfView.updateHandleCursor(windowPoint: e.locationInWindow) } }
             return e
         }
         reloadOutline()

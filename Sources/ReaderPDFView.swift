@@ -110,7 +110,7 @@ private final class OverlayView: NSView {
         for (rect, cursor) in handleCursorRects() { addCursorRect(rect, cursor: cursor) }
     }
     /// Curseurs de redimensionnement précis : flèche horizontale ou verticale sur les côtés, diagonale sur les coins.
-    private static func cursor(for h: ReaderPDFView.Handle) -> NSCursor {
+    static func cursor(for h: ReaderPDFView.Handle) -> NSCursor {
         if #available(macOS 15.0, *) {
             switch h {
             case .t: return .frameResize(position: .top, directions: .all)
@@ -275,6 +275,15 @@ final class ReaderPDFView: PDFView {
             return a.bounds.insetBy(dx: -4, dy: -4).contains(pp)
         }
         return hit.map { ($0, page) }
+    }
+
+    /// PDFKit remet son propre curseur à chaque mouvement : au-dessus d'une poignée on repose le curseur de redimensionnement juste après lui.
+    func updateHandleCursor(windowPoint wp: NSPoint) {
+        let p = convert(wp, from: nil)
+        guard bounds.contains(p), editor == nil, let h = handleAt(p) else { return }
+        let c = OverlayView.cursor(for: h)
+        c.set()
+        DispatchQueue.main.async { c.set() }
     }
 
     private func handleAt(_ pt: NSPoint) -> Handle? {

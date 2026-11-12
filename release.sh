@@ -25,16 +25,20 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Nouveau : détourage automatique des images importées (Réglages), sujet isolé sur fond transparent.
+- Nouveau : une image sélectionnée propose « Détourer » (et « Image d'origine »), calcul en arrière-plan.
+- Barre d'outils : icônes et boutons de fenêtre bien centrés.
 <!-- notes:en -->
 ## $VERSION
-- New: automatic background removal for imported images (Settings), subject isolated on a transparent background.
+- New: a selected image offers "Cut out" (and "Original"), computed in the background.
+- Toolbar: icons and window buttons properly centered.
 <!-- notes:es -->
 ## $VERSION
-- Novedad: recorte automático del fondo de las imágenes importadas (Ajustes), sujeto aislado sobre fondo transparente.
+- Novedad: una imagen seleccionada ofrece «Recortar» (y «Original»), calculado en segundo plano.
+- Barra de herramientas: iconos y botones de ventana bien centrados.
 <!-- notes:it -->
 ## $VERSION
-- Novità: rimozione automatica dello sfondo delle immagini importate (Impostazioni), soggetto isolato su sfondo trasparente.
+- Novità: un'immagine selezionata offre «Ritaglia» (e «Originale»), calcolato in background.
+- Barra degli strumenti: icone e pulsanti della finestra ben centrati.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

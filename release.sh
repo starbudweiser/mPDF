@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Poignées de redimensionnement : le curseur reste affiché et les coins sont bien orientés.
+- Maintenance : la numérotation de la copie locale suit désormais la dernière publication, pour que la mise à jour automatique ne la remplace pas par une version plus ancienne. Aucun changement visible.
 <!-- notes:en -->
 ## $VERSION
-- Resize handles: the cursor now stays visible and corners are correctly oriented.
+- Maintenance: the local build number now follows the latest release, so the automatic update never replaces it with an older version. No visible change.
 <!-- notes:es -->
 ## $VERSION
-- Tiradores de redimensionado: el cursor permanece visible y las esquinas están bien orientadas.
+- Mantenimiento: el número de la copia local sigue ahora la última publicación, para que la actualización automática no la sustituya por una versión anterior. Sin cambios visibles.
 <!-- notes:it -->
 ## $VERSION
-- Maniglie di ridimensionamento: il cursore resta visibile e gli angoli sono orientati correttamente.
+- Manutenzione: il numero della copia locale segue ora l'ultima pubblicazione, così l'aggiornamento automatico non la sostituisce con una versione più vecchia. Nessuna modifica visibile.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

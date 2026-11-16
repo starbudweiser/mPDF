@@ -10,6 +10,8 @@ A fast, lightweight PDF reader and editor for macOS, built for reading first and
 
 mPDF is made by Starbudweiser & Claude Code (Anthropic). Part of the **DESKTOP MAC TOOLKIT**. MIT License, © 2026 Starbudweiser. Provided as is, without warranty. "About mPDF" is in the app menu. Inspired by Skim, not affiliated with its authors.
 
+![A filled-in event registration form in mPDF, with a highlighted date, a text note, an arrow and a rectangle annotation.](docs/screenshot.png)
+
 ## Features
 
 - Reader mode: the window takes the shape of the page, the page fills it edge to edge, and the toolbar slides in from the top on demand (pointer at the top edge, two-finger swipe down on the first page, or ⌥⌘T).

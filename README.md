@@ -8,7 +8,7 @@ A fast, lightweight PDF reader and editor for macOS, built for reading first and
 
 ## About
 
-mPDF is made by Starbudweiser & Claude Code (Anthropic). MIT License, © 2026 Starbudweiser. Provided as is, without warranty. Inspired by Skim, not affiliated with its authors. See "About mPDF" in the app menu.
+mPDF is made by Starbudweiser & Claude Code (Anthropic). Part of the **DESKTOP MAC TOOLKIT**. MIT License, © 2026 Starbudweiser. Provided as is, without warranty. "About mPDF" is in the app menu. Inspired by Skim, not affiliated with its authors.
 
 ## Features
 
@@ -22,7 +22,7 @@ mPDF is made by Starbudweiser & Claude Code (Anthropic). MIT License, © 2026 St
 
 ## Install
 
-Download the latest `.zip` from [Releases](https://github.com/starbudweiser/mPDF/releases/latest), unzip and move `mPDF.app` to your Applications folder. The app is signed and notarized. macOS 14 or later.
+Download the latest `.zip` from [Releases](https://github.com/starbudweiser/mPDF/releases/latest), unzip and move `mPDF.app` to your Applications folder. The app is signed and notarized. Requires macOS 14 or later (Apple Silicon or Intel).
 
 ## Build
 
@@ -33,4 +33,4 @@ DEV=1 ./build_app.sh    # development edition (mPDF DEV.app)
 
 ## Français
 
-mPDF est un lecteur et éditeur PDF rapide et léger pour macOS : lecture d'abord (la page remplit la fenêtre, la barre d'outils glisse à la demande), puis remplissage de modèles (texte, coches, images, formes), ajout de PDF ou d'images par glisser-déposer entre deux pages. Voir « À propos de mPDF » dans le menu de l'appli.
+mPDF est un lecteur et éditeur PDF rapide et léger pour macOS : lecture d'abord (la page remplit la fenêtre, la barre d'outils glisse à la demande), puis remplissage de modèles (texte, coches, images, formes), ajout de PDF ou d'images par glisser-déposer entre deux pages. Fait partie du **DESKTOP MAC TOOLKIT**. Licence MIT. Voir « À propos de mPDF » dans le menu de l'appli.

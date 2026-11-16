@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Maintenance : la numérotation de la copie locale suit désormais la dernière publication, pour que la mise à jour automatique ne la remplace pas par une version plus ancienne. Aucun changement visible.
+- Fenêtre « À propos » : mention de la collection DESKTOP MAC TOOLKIT. README et licence complétés.
 <!-- notes:en -->
 ## $VERSION
-- Maintenance: the local build number now follows the latest release, so the automatic update never replaces it with an older version. No visible change.
+- About window now mentions the DESKTOP MAC TOOLKIT collection. README and license completed.
 <!-- notes:es -->
 ## $VERSION
-- Mantenimiento: el número de la copia local sigue ahora la última publicación, para que la actualización automática no la sustituya por una versión anterior. Sin cambios visibles.
+- La ventana «Acerca de» menciona ahora la colección DESKTOP MAC TOOLKIT. README y licencia completados.
 <!-- notes:it -->
 ## $VERSION
-- Manutenzione: il numero della copia locale segue ora l'ultima pubblicazione, così l'aggiornamento automatico non la sostituisce con una versione più vecchia. Nessuna modifica visibile.
+- La finestra «Informazioni» menziona ora la collezione DESKTOP MAC TOOLKIT. README e licenza completati.
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

@@ -44,7 +44,7 @@ enum About {
         let name = NSTextField(labelWithString: ""); name.attributedStringValue = Brand.name(size: 26); name.alignment = .center
         let v = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0"
         let stack = NSStackView(views: [icon, name, label(L.t("about.version", v), secondary: true), label(L.t("about.tagline")),
-                                        label(L.t("about.author")), label(L.t("about.license"), secondary: true), label(L.t("about.warranty"), secondary: true)])
+                                        label(L.t("about.author")), label(L.t("about.collection")), label(L.t("about.license"), secondary: true), label(L.t("about.warranty"), secondary: true)])
         stack.orientation = .vertical; stack.alignment = .centerX; stack.spacing = 8
         stack.setCustomSpacing(14, after: icon); stack.setCustomSpacing(14, after: stack.views[2])
         stack.translatesAutoresizingMaskIntoConstraints = false

@@ -3,8 +3,9 @@ import Foundation
 
 enum L {
     static let lang: String = {
-        let code = String((Locale.preferredLanguages.first ?? "en").prefix(2))
-        return tables[code] != nil ? code : "en"
+        // Première langue préférée du système prise en charge (liste complète), anglais sinon.
+        for id in Locale.preferredLanguages { let code = String(id.prefix(2)); if tables[code] != nil { return code } }
+        return "en"
     }()
 
     static func t(_ key: String, _ args: CVarArg...) -> String {

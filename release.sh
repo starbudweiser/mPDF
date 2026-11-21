@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Fenêtre « À propos » : mention de la collection DESKTOP MAC TOOLKIT. README et licence complétés.
+- Fermer le dernier document quitte l'application (comme mVIEW).
 <!-- notes:en -->
 ## $VERSION
-- About window now mentions the DESKTOP MAC TOOLKIT collection. README and license completed.
+- Closing the last document now quits the app (like mVIEW).
 <!-- notes:es -->
 ## $VERSION
-- La ventana «Acerca de» menciona ahora la colección DESKTOP MAC TOOLKIT. README y licencia completados.
+- Al cerrar el último documento, la aplicación se cierra (como mVIEW).
 <!-- notes:it -->
 ## $VERSION
-- La finestra «Informazioni» menziona ora la collezione DESKTOP MAC TOOLKIT. README e licenza completati.
+- Chiudere l'ultimo documento chiude l'applicazione (come mVIEW).
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi

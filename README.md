@@ -36,3 +36,9 @@ DEV=1 ./build_app.sh    # development edition (mPDF DEV.app)
 ## Français
 
 mPDF est un lecteur et éditeur PDF rapide et léger pour macOS : lecture d'abord (la page remplit la fenêtre, la barre d'outils glisse à la demande), puis remplissage de modèles (texte, coches, images, formes), ajout de PDF ou d'images par glisser-déposer entre deux pages. Fait partie du **DESKTOP MAC TOOLKIT**. Licence MIT. Voir « À propos de mPDF » dans le menu de l'appli.
+
+## Support / Soutenir
+
+This app is free. If it is useful to you, you can support the project (optional, no reward expected): [GitHub Sponsors](https://github.com/sponsors/starbudweiser).
+
+Cette appli est gratuite. Si elle vous est utile, vous pouvez soutenir le projet (facultatif, sans contrepartie) : [GitHub Sponsors](https://github.com/sponsors/starbudweiser).

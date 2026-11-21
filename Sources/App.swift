@@ -35,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { NSDocumentController.shared.openDocument(nil) }
         return false

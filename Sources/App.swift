@@ -77,7 +77,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item(t("menu.open"), #selector(NSDocumentController.openDocument(_:)), "o"), recentHost, .separator(),
             item(t("menu.close"), #selector(NSWindow.performClose(_:)), "w"),
             item(t("menu.save"), #selector(NSDocument.save(_:)), "s"),
-            item(t("menu.saveAs"), #selector(NSDocument.saveAs(_:)), "S", [.command, .shift]), .separator(),
+            item(t("menu.saveAs"), #selector(NSDocument.saveAs(_:)), "S", [.command, .shift]),
+            item(t("menu.exportImages"), #selector(ReaderWC.exportImages(_:)), "e", [.command, .shift]), .separator(),
             item(t("menu.print"), #selector(NSDocument.printDocument(_:)), "p")]))
 
         main.addItem(menu(t("menu.edit"), [

@@ -25,16 +25,16 @@ if [ -z "$NOTES" ]; then
   cat > "$NOTES_FILE" <<NOTES_EOF
 <!-- notes:fr -->
 ## $VERSION
-- Fermer le dernier document quitte l'application (comme mVIEW).
+- Nouveau : Fichier › Exporter en images… (PNG, JPG, GIF, jusqu'à 300 dpi).
 <!-- notes:en -->
 ## $VERSION
-- Closing the last document now quits the app (like mVIEW).
+- New: File › Export as Images… (PNG, JPG, GIF, up to 300 dpi).
 <!-- notes:es -->
 ## $VERSION
-- Al cerrar el último documento, la aplicación se cierra (como mVIEW).
+- Nuevo: Archivo › Exportar como imágenes… (PNG, JPG, GIF, hasta 300 dpi).
 <!-- notes:it -->
 ## $VERSION
-- Chiudere l'ultimo documento chiude l'applicazione (come mVIEW).
+- Novità: File › Esporta come immagini… (PNG, JPG, GIF, fino a 300 dpi).
 NOTES_EOF
   NOTES_ARGS=(--notes-file "$NOTES_FILE")
 else NOTES_ARGS=(--notes "$NOTES"); fi
